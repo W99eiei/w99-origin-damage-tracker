@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#111827">
+<title>W99 Origin Damage Tracker</title>
+<style>
+:root{color-scheme:dark;font-family:Segoe UI,Arial,sans-serif;background:#111827;color:#e5e7eb;font-synthesis:none}
+*{box-sizing:border-box}
+body{margin:0;width:min(418px,100vw);min-height:100vh;padding:5px;background:#111827}
+.panel{width:100%;min-height:380px;padding:12px 10px 10px;border:1px solid #344054;border-radius:14px;background:#111827;box-shadow:0 8px 24px #0003}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:16px}
+.brand{display:flex;align-items:center;gap:8px;min-width:0;font-size:14px;font-weight:750;letter-spacing:.15px;white-space:nowrap}
+.swords{color:#f2bc05;font-size:16px}
+.badge{flex:0 0 auto;border-radius:20px;padding:4px 9px;background:#17372f;color:#48d7a1;font-size:11px;font-weight:700}
+.badge.off{background:#3b2530;color:#ff8caf}
+.summary{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:0 0 12px}
+.content{color:#aeb9c9;font-size:11px;letter-spacing:.35px;text-transform:uppercase}
+.total{text-align:right}
+.total-label{display:block;color:#aeb9c9;font-size:11px;letter-spacing:.3px}
+.total strong{display:block;margin-top:4px;font-size:17px;font-variant-numeric:tabular-nums}
+.total-healing{display:none;margin-top:4px;color:#48d7a1;font-size:10px;font-weight:650;font-variant-numeric:tabular-nums}
+#raidstate{margin-top:5px;color:#748198;font-size:10px;line-height:1.3}
+#rows{display:flex;flex-direction:column;gap:10px;min-height:190px}
+.player{min-width:0;padding-bottom:8px;border-bottom:1px solid #263142}
+.player-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px;font-size:13px;font-weight:700}
+.player-name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.player-damage{flex:0 0 auto;font-variant-numeric:tabular-nums}
+.bar{height:9px;overflow:hidden;border-radius:99px;background:#374151}
+.bar-fill{height:100%;min-width:0;border-radius:99px;transition:width .25s ease}
+.heal-row{display:flex;align-items:center;gap:8px;margin-top:4px}
+.heal-bar{flex:1;height:3px;overflow:hidden;border-radius:99px;background:#263142}
+.heal-fill{height:100%;min-width:0;border-radius:99px;background:#2dcc9a;transition:width .25s ease}
+.heal-value{flex:0 0 auto;min-width:78px;text-align:right;color:#48d7a1;font-size:9px;font-variant-numeric:tabular-nums}
+.intro{display:flex;gap:8px;align-items:flex-start;margin:-6px 0 12px;padding:8px 9px;border:1px solid #253548;border-radius:8px;background:#151f30;color:#b8c4d5;font-size:10px;line-height:1.45}
+.summary-intro{flex:1;min-width:0;margin:0;padding:0;border:0;background:transparent}
+.intro-mark{flex:0 0 auto;color:#5aa6ff;font-size:9px;font-weight:800;letter-spacing:.4px}
+.chart-legend{display:flex;gap:12px;margin:-5px 0 8px;color:#8f9caf;font-size:9px}
+.legend-item{display:flex;align-items:center;gap:5px}
+.legend-mark{display:inline-block;width:12px;height:6px;border-radius:99px;background:#5aa6ff}
+.legend-mark.healing{height:3px;background:#2dcc9a}
+.empty{padding:50px 4px;text-align:center;color:#8190a5;font-size:12px}
+footer{display:flex;justify-content:space-between;gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid #374151;color:#d0d6df;font-size:11px}
+footer strong{font-weight:700;font-variant-numeric:tabular-nums}
+details{margin-top:11px;border-top:1px solid #263142;padding-top:8px;color:#aeb9c9;font-size:11px}
+summary{cursor:pointer;user-select:none}
+.controls{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}
+button,select{font:inherit;color:#e5e7eb;background:#1d2939;border:1px solid #39475b;border-radius:6px;padding:7px 9px}
+button{cursor:pointer}button:disabled{opacity:.45;cursor:default}
+.button-primary{background:#17372f;border-color:#27765b;color:#b7f7dc;font-weight:700;padding:8px 12px}
+.save-area{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:8px 0 3px}
+.save-hint{color:#8492a6;font-size:10px}
+.autosave-option{display:inline-flex;align-items:center;gap:6px;cursor:pointer}
+.autosave-option input{width:14px;height:14px;accent-color:#71d6e4}
+.status{min-height:18px;color:#aeb9c9;font-size:11px}.status.error{color:#ff8caf}
+.ally{display:grid;grid-template-columns:18px minmax(90px,145px) 1fr;align-items:center;gap:7px;padding:7px 0;border-bottom:1px solid #263142}
+.ally select{width:100%;min-width:0;padding:6px;font-size:11px}
+.ally input{width:15px;height:15px;accent-color:#f2bc05}
+.ally small{overflow-wrap:anywhere;color:#8492a6;font-size:10px}
+#apply{margin-top:8px}
+.help{margin:8px 0 0;color:#8492a6;font-size:10px;line-height:1.5}
+.saved-list{display:flex;flex-direction:column;gap:5px;margin-top:8px}
+.saved-entry{display:flex;align-items:stretch;gap:6px}
+.saved-item{flex:1;min-width:0;text-align:left;font-size:10px;line-height:1.4}
+.saved-delete{flex:0 0 auto;border-color:#71404a;color:#ff9baa;font-size:10px}
+.saved-compare-check{display:flex;align-items:center;gap:6px;padding:0 8px;border:1px solid #2d3e54;border-radius:8px;color:#b9c6d8;font-size:10px;white-space:nowrap}
+.saved-compare-check input{accent-color:#71d6e4}
+.compare-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:9px 0;color:#9daac0;font-size:11px}
+.compare-toolbar button,.report-export{border-color:#3f3d59;background:#1c1b30;color:#e9e5f6}
+.compare-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px;margin:4px 0 14px}
+.compare-fights{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:4px 0 14px}
+.compare-fight{min-width:0;padding:13px;border:1px solid #393650;border-radius:11px;background:linear-gradient(145deg,#1c1b30,#151522)}
+.compare-fight h3{margin:0 0 4px;color:#f3f0fb;font-size:13px}
+.compare-fight>small{display:block;min-height:28px;color:#9e9ab3;font-size:10px}
+.compare-kpis{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin:10px 0 12px}
+.compare-kpi{padding:8px;border:1px solid #34324a;border-radius:8px;background:#171625}
+.compare-kpi small{display:block;color:#9995b0;font-size:9px}
+.compare-kpi strong{display:block;margin-top:4px;color:#eeeaf8;font-size:12px;font-variant-numeric:tabular-nums}
+.compare-roster{display:flex;flex-direction:column;gap:6px}
+.compare-player{display:grid;grid-template-columns:minmax(65px,1fr) auto;align-items:center;gap:2px 8px;padding:7px 0;border-top:1px solid #302e45;font-size:10px}
+.compare-player strong{overflow:hidden;color:#e6e2f2;text-overflow:ellipsis;white-space:nowrap}
+.compare-player span{text-align:right;color:#c6c1d8;font-variant-numeric:tabular-nums}
+.compare-player i{grid-column:1/-1;display:block;height:5px;overflow:hidden;border-radius:9px;background:#353348}
+.compare-player i b{display:block;height:100%;border-radius:inherit;background:#71d6e4}
+.compare-player em{grid-column:1/-1;color:#45d8ae;font-size:9px;font-style:normal;text-align:right}
+.compare-delta-heading{margin:14px 0 7px;color:#c8c3d9;font-size:12px}
+@media(max-width:720px){.compare-fights{grid-template-columns:1fr}}
+.compare-card{padding:12px;border:1px solid #393650;border-radius:10px;background:#1b1a30}
+.compare-card small{display:block;color:#a39fb6;font-size:10px}
+.compare-card strong{display:block;margin-top:6px;color:#f3f0fb;font-size:15px;font-variant-numeric:tabular-nums}
+.compare-card span{display:block;margin-top:4px;color:#71d6e4;font-size:10px}
+.compare-table-wrap{overflow:auto;border:1px solid #393650;border-radius:10px}
+.compare-table{width:100%;min-width:680px;border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums}
+.compare-table th,.compare-table td{padding:9px 10px;border-bottom:1px solid #302e45;text-align:right;white-space:nowrap}
+.compare-table th:first-child,.compare-table td:first-child{text-align:left}
+.compare-table th{background:#211f37;color:#bcb7d1}
+.compare-delta.positive{color:#45d8ae}.compare-delta.negative{color:#ff91a9}
+.results-window.compare-mode{width:calc(100vw - 48px);max-width:1500px}
+.compare-mode .compare-table{min-width:0;table-layout:fixed;font-size:10px}
+.compare-mode .compare-table th,.compare-mode .compare-table td{white-space:normal;overflow-wrap:anywhere}
+.results-window.compare-mode .results-content{overflow-x:hidden}
+.compare-mode .compare-table-wrap{overflow-x:hidden}
+.player-v-player{margin:14px 0;padding:13px;border:1px solid #393650;border-radius:11px;background:#171625}
+.player-v-player h3{margin:0 0 9px;color:#eeeaf8;font-size:13px}
+.player-pickers{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.player-pickers label{display:grid;gap:4px;min-width:180px;color:#a39fb6;font-size:10px}
+.player-pickers.multi-player-pickers{gap:6px;margin:8px 0 12px}
+.player-pickers .player-check{display:flex;align-items:center;gap:6px;min-width:0;padding:6px 9px;border:1px solid #34324a;border-radius:8px;background:#1b1a30;color:#ded9eb;cursor:pointer}
+.player-check input{width:14px;height:14px;margin:0;accent-color:#71d6e4}
+.all-player-comparison{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.all-player-card{overflow:hidden}
+.all-player-table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:10px;font-variant-numeric:tabular-nums}
+.all-player-table th,.all-player-table td{padding:6px 4px;border-bottom:1px solid #302e45;text-align:right;overflow-wrap:anywhere}
+.all-player-table th:first-child{width:27%;text-align:left;color:#c9c4d9}
+.all-player-table thead th{color:#9995b0;font-size:9px;font-weight:600}
+.all-player-amount{min-width:0}
+.all-player-amount strong{display:block;white-space:nowrap}
+.all-player-amount i{display:block;height:4px;margin-top:4px;overflow:hidden;border-radius:8px;background:#353348}
+.all-player-amount b{display:block;width:0;height:100%;border-radius:inherit;background:#71d6e4}
+.all-player-amount b.healing{background:#45d8ae}
+.player-pickers select{font-size:11px}
+.player-head-to-head{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.player-head-card{min-width:0;padding:10px;border:1px solid #34324a;border-radius:9px;background:#1b1a30}
+.player-head-card h4{margin:0 0 7px;color:#c9c4d9;font-size:11px}
+.player-head-card table{width:100%;table-layout:fixed;border-collapse:collapse;font-size:10px;font-variant-numeric:tabular-nums}
+.player-head-card th,.player-head-card td{padding:6px 4px;border-bottom:1px solid #302e45;text-align:right}
+.player-head-card th:first-child,.player-head-card td:first-child{text-align:left}
+.player-head-card th{color:#9995b0;font-weight:600}
+.player-head-card th,.player-head-card td{overflow-wrap:anywhere}
+@media(max-width:720px){.player-head-to-head,.all-player-comparison{grid-template-columns:1fr}.results-window.compare-mode{width:calc(100vw - 20px)}}
+.saved-view{margin-top:9px;padding:9px;border:1px solid #344054;border-radius:8px;color:#d0d6df}
+.single-player-compare{margin:10px 0 14px;padding:12px;border:1px solid #393650;border-radius:11px;background:linear-gradient(145deg,#1b1a30,#151522)}
+.single-player-compare h3{margin:0 0 4px;color:#eeeaf8;font-size:13px}
+.single-player-compare .help{margin:0 0 9px}
+.single-compare-controls{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.single-compare-players{display:flex;flex-wrap:wrap;gap:6px}
+.single-compare-player{display:flex;align-items:center;gap:6px;padding:5px 8px;border:1px solid #34324a;border-radius:8px;background:#1b1a30;color:#ded9eb;font-size:10px;cursor:pointer}
+.single-compare-player input{width:13px;height:13px;margin:0;accent-color:#71d6e4}
+.single-compare-metric{display:flex;align-items:center;gap:7px;color:#aaa6bf;font-size:10px}
+.single-compare-metric select{padding:5px 8px;font-size:10px}
+.single-compare-chart{display:flex;flex-direction:column;gap:7px}
+.single-compare-row{display:grid;grid-template-columns:minmax(90px,150px) minmax(80px,1fr) minmax(75px,110px);align-items:center;gap:8px;font-size:10px}
+.single-compare-name{overflow:hidden;color:#e5e1f0;text-overflow:ellipsis;white-space:nowrap;font-weight:650}
+.single-compare-track{height:9px;overflow:hidden;border-radius:99px;background:#353348}
+.single-compare-fill{height:100%;min-width:0;border-radius:inherit;transition:width .2s ease}
+.single-compare-value{text-align:right;color:#f3f0fb;font-variant-numeric:tabular-nums}
+.single-compare-empty{padding:12px;text-align:center;color:#9995b0;font-size:10px}
+.saved-view h3{margin:0 0 6px;font-size:12px}
+#savedView.result-report-window{display:block;width:100%;max-height:none;overflow:auto;margin:0;padding:0;border:0;border-radius:0;background:transparent;box-shadow:none}
+#savedView[hidden]{display:none}
+.saved-view-actions{display:flex;justify-content:flex-end;margin-bottom:5px}
+.saved-detail-close{padding:5px 8px;font-size:10px}
+.results-open{width:100%;margin-top:10px;text-align:left;font-size:11px;font-weight:650}
+.overlay-actions{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0 2px}
+.overlay-actions button{font-size:11px}
+#overlayClicks{display:grid;width:38px;height:34px;place-items:center;padding:5px}
+#overlayClicks svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#overlayClicks[data-pass-through="true"]{color:#f2bc05;border-color:#796623}
+.overlay-help{margin:3px 0 7px;color:#8492a6;font-size:10px;line-height:1.4}
+.overlay-opacity{display:grid;grid-template-columns:1fr auto;align-items:center;gap:3px 8px;margin:7px 0;color:#aeb9c9;font-size:10px}
+.overlay-opacity input{grid-column:1/-1;width:100%;height:15px;margin:0;accent-color:#5aa6ff;cursor:pointer}
+.overlay-opacity output{color:#e5e7eb;font-variant-numeric:tabular-nums}
+.results-modal[hidden]{display:none}
+.results-modal{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:12px;background:#050914d9}
+.results-window{display:flex;flex-direction:column;width:min(520px,100%);max-height:min(90vh,850px);overflow:hidden;border:1px solid #40506a;border-radius:14px;background:#111827;box-shadow:0 18px 55px #0009}
+.result-report-window{width:min(1040px,100%)}
+.results-tabs{display:flex;gap:5px;padding:8px 12px 0;border-bottom:1px solid #344054;background:#0f1724}
+.results-tab{max-width:70%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;border-radius:7px 7px 0 0;padding:7px 10px;border-bottom:0;background:#172233;color:#aeb9c9;font-size:10px}
+.results-tab.active{background:#1d2939;color:#f3f4f6;border-color:#4b5d75}
+.results-tab[hidden]{display:none}
+.results-tab-close{margin-left:8px;color:#ff9baa;font-weight:800}
+.results-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;border-bottom:1px solid #344054}
+.results-title{font-size:13px;font-weight:750;color:#f3f4f6}
+.results-close{width:30px;height:30px;padding:0;font-size:18px;line-height:1}
+.results-content{overflow:auto;padding:12px 14px 16px}
+.results-content .controls{margin:0 0 8px}
+.report-summary{display:flex;flex-wrap:wrap;gap:8px 16px;margin-bottom:12px;color:#cbd5e1;font-size:11px}
+.report-summary strong{color:#f3f4f6;font-variant-numeric:tabular-nums}
+.report-summary .healing{color:#48d7a1}
+.result-table-wrap{overflow:auto;border:1px solid #2b3648;border-radius:8px}
+.result-table{width:100%;min-width:380px;table-layout:fixed;border-collapse:collapse;font-size:10px;font-variant-numeric:tabular-nums}
+.result-table th,.result-table td{padding:7px 3px;border-bottom:1px solid #263142;text-align:right;vertical-align:middle;white-space:nowrap}
+.result-table th{position:sticky;top:0;z-index:1;background:#1a2433;color:#9eacbf;font-size:10px;font-weight:650}
+.result-table th:first-child,.result-table td:first-child{text-align:left}
+.result-table .player-name-cell{width:20%}
+.result-table th:nth-child(2),.result-table th:nth-child(5){width:22%}
+.result-table th:nth-child(3),.result-table th:nth-child(6){width:11%}
+.result-table th:nth-child(4){width:14%}
+.result-player-button{max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:3px 0;border:0;background:transparent;color:#e5e7eb;text-align:left;font-size:10px;font-weight:700}
+.result-player-button:hover{color:#f2bc05}
+.report-damage,.report-healing{min-width:0}
+.report-value{display:block}
+.report-bar{height:7px;margin-top:5px;overflow:hidden;border-radius:99px;background:#374151}
+.report-bar-fill{height:100%;border-radius:99px;background:#5aa6ff}
+.report-bar-fill.healing{background:#2dcc9a}
+.report-metric-sub{display:block;margin-top:3px;color:#8492a6;font-size:10px}
+.result-expand-row[hidden]{display:none}
+.result-expand-row td{padding:8px;text-align:left;white-space:normal;background:#141e2c}
+.player-skills-panel{padding:2px 4px 6px}
+.player-skills-panel h4{margin:8px 0 5px;color:#9eacbf;font-size:11px}
+.player-skills-panel .saved-character{margin-left:4px}
+.report-note{margin:3px 0 8px;color:#94a3b8;font-size:10px;line-height:1.5}
+.equipment-set-name{display:block;margin:2px 0 7px;color:#93a4bb;font-size:10px}
+.equipment-item-row{display:grid;grid-template-columns:115px minmax(0,1fr);gap:8px;padding:5px 4px;border-bottom:1px solid #202b3a;font-size:10px;line-height:1.4}
+.equipment-slot{color:#9eacbf}
+.equipment-item-label{color:#d0d6df;overflow-wrap:anywhere}
+.equipment-item-id{display:block;color:#77869b;font-size:9px;overflow-wrap:anywhere}
+.report-back{padding:5px 9px;font-size:10px}
+.saved-row{display:flex;justify-content:space-between;gap:8px;padding:4px 0;border-bottom:1px solid #263142;font-size:11px}
+.saved-row.heal-summary{color:#48d7a1}
+.saved-player{margin-top:6px;border-bottom:1px solid #263142}
+.saved-player summary{padding:5px 0;cursor:pointer;font-size:11px;font-weight:650}
+.saved-skill{padding:3px 0 3px 10px;color:#aeb9c9;font-size:10px;overflow-wrap:anywhere}
+.saved-skills{margin:4px 0 6px 8px;border-left:1px solid #344054;padding-left:8px}
+.saved-skills summary{padding:6px 0;color:#9fb0c6;cursor:pointer;font-size:11px}
+.saved-character{margin:6px 0;border-bottom:1px solid #202b3a}
+.saved-character summary{padding:8px 4px;color:#d0d6df;cursor:pointer;font-size:12px;font-weight:650}
+.character-group-title{display:inline-flex;align-items:center;gap:10px;vertical-align:middle}
+.character-icon{position:relative;display:inline-flex;width:34px;height:34px;flex:0 0 34px;align-items:center;justify-content:center;overflow:hidden;border:1px solid #718096;border-radius:50%;color:#f8fafc;font-size:10px;font-weight:800;letter-spacing:.2px;text-shadow:0 1px 2px #0008;box-shadow:inset 0 1px #ffffff22}
+.character-icon img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scale(2);transform-origin:50% 27%}
+.character-icon img.remote-character-portrait{transform:scale(1.08);transform-origin:50% 50%}
+.character-group-label{line-height:1.35}
+.skill-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:3px 10px;align-items:center;padding:7px 0;border-bottom:1px solid #202b3a;font-size:11px;line-height:1.4}
+.skill-main{display:flex;min-width:0;align-items:center;gap:10px}
+.skill-icon{width:32px;height:32px;flex:0 0 32px;object-fit:cover;border:1px solid #3b4a60;border-radius:6px;background:#1d2939}
+.skill-name{overflow-wrap:anywhere;color:#cbd5e1}
+.skill-damage{white-space:nowrap;font-variant-numeric:tabular-nums}
+.skill-meta{grid-column:1/-1;padding-left:3px;color:#8492a6;font-size:10px}
+@media(max-width:360px){.panel{padding:10px 8px}.player-head{font-size:12px}}
+@media(min-width:760px){
+  body{width:100%;min-height:100vh;padding:22px;background:radial-gradient(ellipse at top,#1c2940 0,#111827 58%)}
+  .panel{width:100%;max-width:1480px;min-height:calc(100vh - 44px);margin:0 auto;padding:22px 26px 18px;border-radius:18px;display:flex;flex-direction:column}
+  header{margin-bottom:22px}
+  .brand{font-size:16px}
+  .badge{padding:6px 11px;font-size:12px}
+  .summary{margin-bottom:20px}
+  .content,.total-label{font-size:12px}
+  .total strong{font-size:23px}
+  .total-healing{font-size:12px}
+  .intro{font-size:12px;padding:11px 13px}
+  .intro-mark{font-size:10px}
+  .chart-legend{font-size:10px;margin-bottom:10px}
+  #rows{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));align-content:start;align-items:start;gap:12px;flex:1;min-height:0}
+  .player{padding:13px 14px;border:1px solid #263142;border-radius:11px;background:#151f30}
+  .player-head{font-size:14px;margin-bottom:9px}
+  .bar{height:10px}
+  .heal-value{font-size:10px}
+  .empty{grid-column:1/-1;align-self:center;padding:90px 10px;font-size:14px}
+  footer{margin-top:18px;padding-top:16px;font-size:12px}
+  .save-area{margin-top:12px}
+  .button-primary{font-size:13px;padding:10px 15px}
+  .save-hint,.help{font-size:11px}
+  .overlay-help{font-size:11px}
+  details{font-size:12px}
+  .results-window{width:min(1200px,calc(100vw - 48px));max-height:calc(100vh - 48px)}
+  .results-content{padding:18px 22px 24px}
+  .result-report-window{width:min(1400px,calc(100vw - 48px))}
+  .report-summary{gap:9px 20px;margin-bottom:14px;font-size:12px}
+  .result-table{min-width:0;font-size:12px}
+  .result-table th,.result-table td{padding:11px 10px}
+  .result-table th{font-size:12px}
+  .result-player-button{max-width:240px;font-size:13px}
+  .report-damage,.report-healing{min-width:120px}
+  .report-bar{height:8px}
+  .report-metric-sub{font-size:11px}
+  .results-tab{font-size:12px}
+  .results-title{font-size:15px}
+  .player-skills-panel h4{font-size:13px}
+  .saved-player summary{padding:8px 0;font-size:13px}
+  .saved-row{padding:6px 0;font-size:12px}
+  .saved-character summary{padding:10px 6px;font-size:14px}
+  .character-group-title{gap:12px}
+  .character-icon{width:46px;height:46px;flex-basis:46px}
+  .skill-row{gap:5px 14px;padding:11px 0;font-size:13px}
+  .skill-main{gap:12px}
+  .skill-icon{width:40px;height:40px;flex-basis:40px}
+  .skill-meta{font-size:11px}
+  .saved-skill{padding:6px 0 6px 12px;font-size:12px}
+  .saved-skills summary{padding:8px 0;font-size:12px}
+  .report-note{font-size:11px}
+  .equipment-item-row{grid-template-columns:150px minmax(0,1fr);padding:7px 6px;font-size:12px}
+  .equipment-set-name{font-size:11px}
+  .equipment-item-id{font-size:10px}
+}
+/* Polished interface layer */
+:root{--canvas:#0a101b;--surface:#111b2a;--surface-raised:#172336;--surface-soft:#1b2a40;--line:#2a3a50;--text-main:#edf3fb;--text-muted:#9aabc1;--blue:#62a9ff;--gold:#f2bf24;--green:#39d9a2;--shadow:0 18px 48px #02061766}
+html{background:var(--canvas)}
+body{width:100%;min-height:100vh;padding:10px;background:radial-gradient(ellipse at 50% -12%,#1a2b43 0,transparent 54%),var(--canvas);color:var(--text-main);overflow-x:hidden}
+html,body{scrollbar-width:none;-ms-overflow-style:none}
+html::-webkit-scrollbar,body::-webkit-scrollbar{display:none;width:0;height:0}
+.panel{width:100%;min-height:calc(100vh - 20px);padding:15px 14px 13px;border:1px solid #304158;border-radius:18px;background:linear-gradient(165deg,#121d2d 0%,#0f1826 68%,#101a29 100%);box-shadow:var(--shadow),inset 0 1px #ffffff0a}
+header{margin-bottom:15px;padding-bottom:12px;border-bottom:1px solid #ffffff0b}
+.brand{gap:9px;font-size:14px;font-weight:780;letter-spacing:.35px;color:var(--text-main)}
+.brand-mark{display:grid;width:25px;height:25px;flex:0 0 25px;place-items:center;border:1px solid #d8aa2738;border-radius:8px;background:#f2bf2412;color:var(--gold)}
+.brand-mark svg{width:16px;height:16px;fill:currentColor}
+.badge{padding:5px 10px;border:1px solid #39d9a22b;border-radius:999px;background:#12372f;color:#5de1b0;font-size:10px;letter-spacing:.35px}
+.badge.off{border-color:#ff7c962c;background:#3b2530;color:#ff9db2}
+.summary{align-items:stretch;margin-bottom:12px}
+.summary-intro{display:flex;align-items:center;gap:9px;padding:10px 11px;border:1px solid #31415a;border-radius:12px;background:linear-gradient(120deg,#18263a,#141f30);font-size:11px;line-height:1.5}
+.intro-mark{display:grid;min-width:38px;height:24px;place-items:center;border:1px solid #438ce741;border-radius:7px;background:#5aa6ff13;color:#83bdff;font-size:9px;letter-spacing:.7px}
+.total{min-width:105px;padding:9px 11px;border:1px solid #32435b;border-radius:12px;background:#182438}
+.total-label{font-size:9px;letter-spacing:.8px;color:var(--text-muted)}
+.total strong{margin-top:3px;color:#fff;font-size:18px;letter-spacing:.2px}
+.total-healing{font-size:10px}
+.chart-legend{gap:13px;margin:0 0 9px;padding:0 2px;color:var(--text-muted);font-size:10px}
+.legend-item{gap:6px}
+.legend-mark{width:9px;height:9px;border-radius:3px;box-shadow:0 0 10px #5aa6ff35}
+.legend-mark.healing{height:4px;border-radius:3px;box-shadow:0 0 9px #2dcc9a3d}
+#rows{gap:7px;min-height:180px}
+.player{padding:9px 10px 8px;border:1px solid #29384d;border-radius:11px;background:linear-gradient(115deg,#172335,#141e2d);box-shadow:inset 0 1px #ffffff05}
+.player-head{margin-bottom:7px;font-size:12px;color:#edf3fb}
+.player-name{font-weight:680}
+.player-damage{color:#f7f9fc;font-size:12px;font-weight:740}
+.bar{height:8px;background:#344156}
+.heal-row{margin-top:5px}
+.heal-value{color:#63ddb2}
+.empty{display:grid;min-height:176px;place-items:center;padding:26px 18px;border:1px dashed #35445a;border-radius:13px;background:#111c2b55;color:#a1b0c4;line-height:1.55}
+footer{margin-top:11px;padding:11px 2px 0;border-top:1px solid var(--line);color:#c3cede;font-size:11px}
+footer strong{color:var(--text-main)}
+.save-area{gap:10px;margin:10px 0 4px}
+.button-primary{min-height:36px;padding:8px 13px;border:1px solid #e4b51d;border-radius:9px;background:linear-gradient(180deg,#f4c83d,#e9b91f);box-shadow:0 5px 14px #d6a5161f;color:#1b2431;font-size:12px;font-weight:750;transition:filter .15s ease,transform .15s ease}
+.button-primary:hover:not(:disabled){filter:brightness(1.07);transform:translateY(-1px)}
+.button-primary:disabled{border-color:#3d4c5e;background:#243145;box-shadow:none;color:#728198;opacity:1}
+.save-hint{color:#91a0b4;font-size:10px}
+.status{color:#a9b8cb;font-size:11px;line-height:1.5}.status.error{color:#ff9eb0}
+.display-card{margin-top:10px;padding:10px 11px;border:1px solid #2c3b50;border-radius:12px;background:#111c2b}
+.section-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;color:#dce5f1;font-size:11px;font-weight:700}
+.section-kicker{color:#8294ab;font-size:9px;font-weight:650;letter-spacing:.65px;text-transform:uppercase}
+.overlay-actions{gap:7px;margin:0 0 8px}
+button,select{border-color:#394a61;border-radius:8px;background:#1b2a3e;color:#e7eef8;transition:background .15s ease,border-color .15s ease,transform .15s ease}
+button:hover:not(:disabled){border-color:#5b7594;background:#23344b}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #6bb3ff;outline-offset:2px}
+.overlay-actions .button-primary{border-color:#386f9f;background:linear-gradient(180deg,#2771a9,#1c5f92);box-shadow:0 5px 14px #174f7c30;color:white}
+.overlay-actions .button-primary:hover:not(:disabled){background:linear-gradient(180deg,#3280bb,#226ea2)}
+#overlayClicks{width:36px;height:36px;border-radius:9px}
+#overlayClicks[data-pass-through="true"]{border-color:#d0a92c;background:#392f18;color:#f6d265}
+.overlay-opacity{margin:7px 0 5px;color:#aebbd0;font-size:10px}
+.overlay-opacity output{color:#eef3f9}
+.overlay-opacity input{accent-color:#68afff}
+.overlay-help{margin:5px 0 0;color:#8293aa;font-size:10px;line-height:1.5}
+.results-open{min-height:37px;margin-top:10px;padding:9px 11px;border-color:#35475f;background:#172438;text-align:left;font-size:11px;font-weight:700}
+.results-open::before{content:"▤";margin-right:8px;color:#79b8ff}
+details{margin-top:10px;padding:9px 1px 0;border-top:1px solid #29384d;color:#b0bfd2;font-size:11px}
+main.panel>details>summary{display:flex;align-items:center;gap:7px;color:#bac8d9;font-weight:650;list-style:none}
+main.panel>details>summary::-webkit-details-marker{display:none}
+main.panel>details>summary::before{content:"＋";display:grid;width:17px;height:17px;place-items:center;border:1px solid #34465d;border-radius:5px;color:#8fa4bd;font-size:10px}
+main.panel>details[open]>summary::before{content:"−"}
+.controls button{min-height:32px}
+.help{color:#8798ae}
+.results-modal{padding:18px;background:#050914d9;backdrop-filter:blur(8px)}
+.results-window{border:1px solid #3a4d66;border-radius:17px;background:linear-gradient(165deg,#121d2d,#0d1623);box-shadow:0 24px 70px #000a}
+.results-header{padding:14px 17px;border-bottom:1px solid #2b3b51}
+.results-title{font-size:15px;letter-spacing:.1px}
+.results-close{border-radius:8px;font-size:20px}
+.results-tabs{padding:9px 14px 0;border-bottom-color:#2b3b51;background:#101a28}
+.results-tab{padding:9px 12px;border-radius:9px 9px 0 0;font-size:11px}
+.results-tab.active{border-color:#3a4d66;background:#1a283b;color:#f3f7fc}
+.results-content{padding:15px 16px 18px}
+.saved-list{gap:7px}
+.saved-entry{gap:8px}
+.saved-item{padding:10px 11px;border-radius:9px;text-align:left;font-size:11px}
+.saved-delete{padding:8px 10px;border-radius:9px}
+.report-summary{gap:8px;margin-bottom:13px}
+.report-summary>span{padding:8px 10px;border:1px solid #2d3e54;border-radius:9px;background:#172336}
+.result-table-wrap{border-color:#2d3e54;border-radius:11px;background:#111b2a}
+.result-table th{background:#1a283b;color:#aebed2}
+.result-table td{border-color:#26364a}
+.result-expand-row td{background:#121e2e}
+.saved-view{color:#dce5f1}
+@media(max-width:480px){body{padding:7px}.panel{min-height:calc(100vh - 14px);padding:12px 10px 10px;border-radius:15px}.summary-intro{padding:8px;font-size:10px}.total{min-width:94px;padding:8px}.total strong{font-size:16px}.player{padding:8px}.display-card{padding:9px}.results-modal{padding:8px}.results-content{padding:11px}}
+@media(min-width:760px){body{padding:24px}.panel{min-height:calc(100vh - 48px);padding:24px 28px 20px;border-radius:20px}.brand{font-size:17px}.brand-mark{width:29px;height:29px;flex-basis:29px}.brand-mark svg{width:18px;height:18px}.summary{margin-bottom:15px}.summary-intro{font-size:12px;padding:12px 14px}.total{min-width:150px;padding:12px 15px}.total strong{font-size:23px}.chart-legend{margin-bottom:10px}.player{padding:13px 15px}.player-head,.player-damage{font-size:14px}.bar{height:10px}.empty{min-height:220px;font-size:14px}.display-card{padding:14px 15px}.section-heading{font-size:12px}.save-area{margin-top:13px}.results-header{padding:17px 20px}.results-content{padding:20px 22px 24px}}
+/* Alternate violet + cyan colorway */
+:root{--canvas:#0c0b16;--surface:#151426;--surface-raised:#201e35;--surface-soft:#292644;--line:#393650;--text-main:#f3f0fb;--text-muted:#aca8c2;--blue:#71d6e4;--gold:#b9a0ff;--green:#45d8ae;--shadow:0 18px 48px #03020a80}
+body{background:radial-gradient(ellipse at 50% -12%,#292347 0,transparent 56%),var(--canvas)}
+.panel{border-color:#433d5e;background:linear-gradient(165deg,#19172b 0%,#121220 68%,#151426 100%)}
+.brand-mark{border-color:#b9a0ff55;background:#b9a0ff19}
+.summary-intro{border-color:#3a3853;background:linear-gradient(120deg,#211f38,#19182a)}
+.intro-mark{border-color:#71d6e44a;background:#71d6e414;color:#8de6ef}
+.total{border-color:#403d5d;background:#201e35}
+.player{border-color:#36344e;background:linear-gradient(115deg,#1c1b30,#171625)}
+.bar,.report-bar{background:#3a394f}
+.heal-bar{background:#303047}
+.button-primary{border-color:#b9a0ff;background:linear-gradient(180deg,#b8a0ff,#9277e9);box-shadow:0 5px 16px #8467d52e;color:#181426}
+.button-primary:disabled{border-color:#46435d;background:#2b2940;box-shadow:none;color:#85819c;opacity:1}
+.display-card{border-color:#36344d;background:#171625}
+button,select{border-color:#45425f;background:#24223a;color:#eeeaf8}
+button:focus-visible,select:focus-visible,input:focus-visible{outline-color:#71d6e4}
+.overlay-actions .button-primary{border-color:#8c78d6;background:linear-gradient(180deg,#7963c6,#5e4ca8);box-shadow:0 5px 14px #5b4ba830;color:white}
+.overlay-actions .button-primary:hover:not(:disabled){background:linear-gradient(180deg,#8a74d9,#6d59b9)}
+.results-open{border-color:#3f3d59;background:#1c1b30}
+.results-open::before{color:#71d6e4}
+.results-window{border-color:#47425f;background:linear-gradient(165deg,#19172b,#121220)}
+.results-tabs{border-bottom-color:#37354e;background:#151426}
+.results-tab.active{border-color:#47425f;background:#211f37;color:#f3f0fb}
+.timeline-card{margin:0 0 14px;padding:13px 14px;border:1px solid #3d3a57;border-radius:12px;background:linear-gradient(135deg,#1b1a30,#151522)}
+.timeline-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:9px}
+.timeline-title{color:#f2effa;font-size:13px;font-weight:750}
+.timeline-subtitle{display:block;margin-top:3px;color:#9995b0;font-size:10px}
+.timeline-legend{display:flex;gap:12px;flex:0 0 auto;color:#b1acc4;font-size:10px}
+.timeline-legend span{display:inline-flex;align-items:center;gap:5px}
+.timeline-dot{width:8px;height:8px;border-radius:50%;background:#71d6e4;box-shadow:0 0 9px #71d6e455}
+.timeline-dot.healing{background:#45d8ae;box-shadow:0 0 9px #45d8ae55}
+.timeline-svg{display:block;width:100%;height:auto;overflow:visible}
+.timeline-grid{stroke:#38364f;stroke-width:1;stroke-dasharray:3 5}
+.timeline-line{fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
+.timeline-line.damage{stroke:#71d6e4;filter:drop-shadow(0 0 3px #71d6e455)}
+.timeline-line.healing{stroke:#45d8ae;filter:drop-shadow(0 0 3px #45d8ae55)}
+.timeline-track-label{fill:#c7c1d9;font-size:11px;font-family:Segoe UI,Arial,sans-serif}
+.timeline-axis-label,.timeline-max-label{fill:#8f8ba6;font-size:10px;font-family:Segoe UI,Arial,sans-serif}
+.timeline-empty{padding:19px 12px;border:1px dashed #3a3850;border-radius:9px;color:#a39fb6;font-size:11px;line-height:1.5;text-align:center}
+.report-capture-quality{margin:0 0 13px;color:#a8a2ba;font-size:11px}
+.boss-segments{margin:0 0 15px;padding:13px 14px;border:1px solid #3d3a57;border-radius:12px;background:#171625}
+.boss-segments h3{margin:0 0 5px;color:#f2effa;font-size:14px}
+.boss-segments>p{margin:0 0 9px;color:#9995b0;font-size:10px}
+.boss-segment{padding:9px 0;border-top:1px solid #34314b}
+.boss-segment summary{cursor:pointer;color:#dcd7ec;font-size:11px;font-weight:700}
+.boss-segment-table{width:100%;margin-top:8px;border-collapse:collapse;font-size:10px}
+.boss-segment-table th,.boss-segment-table td{padding:5px;text-align:right;border-bottom:1px solid #302e45}
+.boss-segment-table th:first-child,.boss-segment-table td:first-child{text-align:left}
+.player-activity{margin:8px 0 12px;padding:10px;border:1px solid #393650;border-radius:9px;background:#19172b}
+.player-activity-title{margin:0 0 6px;color:#d6d0e5;font-size:11px;font-weight:700}
+.player-activity-metrics{display:flex;flex-wrap:wrap;gap:6px 14px;color:#aaa4bd;font-size:10px}
+.player-activity-bars{display:grid;grid-template-columns:repeat(48,minmax(2px,1fr));gap:2px;align-items:end;height:38px;margin-top:8px}
+.player-activity-bar{position:relative;display:flex;height:100%;align-items:end;border-radius:2px;background:#29263d}
+.player-activity-bar i{display:block;width:100%;min-height:1px;border-radius:2px 2px 0 0;background:#71d6e4}
+.player-activity-bar b{position:absolute;bottom:0;left:0;width:100%;height:2px;border-radius:2px;background:#45d8ae}
+.survival-card{margin:7px 0 12px;padding:9px;border-left:2px solid #5a526f;background:#171625;color:#c6c1d3;font-size:10px}
+.survival-card strong{color:#f2effa}
+@media(max-width:560px){.timeline-heading{display:block}.timeline-legend{margin-top:8px}}
+@media(min-width:760px){.timeline-card{padding:16px 18px}.timeline-title{font-size:15px}.timeline-subtitle,.timeline-legend{font-size:11px}.timeline-empty{padding:24px;font-size:12px}}
+@media(max-width:600px){.panel{max-width:none}}
+.results-content,.saved-view,.result-table-wrap,.compare-table-wrap{scrollbar-width:none;-ms-overflow-style:none}
+.results-content::-webkit-scrollbar,.saved-view::-webkit-scrollbar,.result-table-wrap::-webkit-scrollbar,.compare-table-wrap::-webkit-scrollbar{display:none;width:0;height:0}
+body{padding:0!important;overflow-x:hidden}
+main.panel{width:100%!important;max-width:none!important;min-height:100vh!important;margin:0!important;padding:0 20px 20px!important;border:0!important;border-radius:0!important;box-shadow:none!important}
+main.panel>header.window-titlebar{position:sticky;top:0;z-index:20;display:flex;height:48px;margin:0 -20px 18px;padding:0 13px;border:0;border-bottom:1px solid #9b8be666;border-radius:0;align-items:center;gap:12px;background:radial-gradient(ellipse at 16% 150%,#6752a477 0,transparent 35%),radial-gradient(ellipse at 52% -100%,#397f9a77 0,transparent 43%),radial-gradient(ellipse at 91% 145%,#58427b88 0,transparent 43%),linear-gradient(105deg,#171528,#24203a 46%,#1a2236 76%,#211a32);box-shadow:0 4px 16px #03020a55;user-select:none}
+main.panel>header.window-titlebar::before{position:absolute;inset:0;content:"";pointer-events:none;background:repeating-linear-gradient(125deg,transparent 0 47px,#ffffff0a 48px 49px,transparent 50px 91px),linear-gradient(180deg,#ffffff0a,transparent 55%)}
+.window-titlebar>*{position:relative;z-index:1}
+.window-titlebar .brand{flex:1;gap:9px;font-size:14px;letter-spacing:.25px;text-shadow:0 1px 5px #06111b99}
+.window-titlebar .brand-mark{width:25px;height:25px;flex-basis:25px;background:#b9a0ff22;border-color:#b9a0ff77;color:#e0d6ff}
+.window-titlebar .badge{margin-right:4px}
+.window-controls{display:flex;height:100%;margin-right:-13px;align-items:stretch;flex:0 0 auto}
+.window-control{display:grid;width:44px;min-width:44px;height:100%;padding:0;place-items:center;border:0;border-left:1px solid #ffffff12;border-radius:0;background:transparent;color:#eaf4f5;font:16px/1 "Segoe UI Symbol","Segoe UI",sans-serif;box-shadow:none;cursor:pointer}
+.window-control:hover{background:#ffffff1b}
+.window-control.close:hover{background:#c94350;color:#fff}
+.window-control.maximize{font-size:14px}
+.window-titlebar{cursor:default}
+@media(min-width:760px){main.panel{padding:0 28px 20px!important}main.panel>header.window-titlebar{height:50px;margin:0 -28px 19px;padding:0 18px}.window-controls{margin-right:-18px}.window-titlebar .brand{font-size:15px}.window-control{width:48px;min-width:48px}}
+.results-open{width:auto;min-width:0;display:inline-flex;align-items:center;justify-content:center;text-align:center;padding:8px 13px;min-height:35px}
+.overlay-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.overlay-opacity{display:flex;align-items:center;gap:7px;width:auto;margin:0 0 0 8px;white-space:nowrap}
+.overlay-opacity input{width:135px;min-width:110px;max-width:150px;height:15px;margin:0;accent-color:#68afff;cursor:pointer}
+@media(max-width:560px){.overlay-opacity{margin-left:0}.overlay-opacity input{width:110px}}.footer-right{display:flex;flex-direction:column;align-items:flex-end;gap:7px}
+.results-open{width:auto;min-width:190px;min-height:36px;display:inline-flex;align-items:center;justify-content:center;padding:8px 13px;border:1px solid #8270cf;border-radius:9px;background:linear-gradient(180deg,#5e4da0,#433679);box-shadow:0 4px 12px #05040f66;color:#fff;font-size:11px;font-weight:750;text-align:center}
+.results-open::before{color:#8de1ed}
+.results-open:hover:not(:disabled){border-color:#a897f3;background:linear-gradient(180deg,#6c5bb0,#51438c);transform:translateY(-1px)}.manual-controls{margin-top:12px;padding:11px 12px;border:1px solid #3f3d59;border-radius:11px;background:linear-gradient(145deg,#1c1b30,#171625)}
+.manual-controls .section-heading{margin-bottom:7px}
+.manual-controls .controls{align-items:center;margin:0}
+.manual-controls #status{flex:1 1 100%;min-height:0;padding-top:3px}.results-window.compare-mode{width:calc(100vw - 24px);max-width:calc(100vw - 24px);min-width:0;box-sizing:border-box}
+.app-credit{margin-top:14px;padding:9px 2px 2px;border-top:1px solid #403b59;color:#8f8aa7;font-size:10px;text-align:center;letter-spacing:.15px}
+.app-credit strong{color:#c5bddc;font-weight:700}
+.results-window.compare-mode .results-content,.results-window.compare-mode .saved-view{width:100%;min-width:0;max-width:100%;box-sizing:border-box}
+.results-window.compare-mode .results-content{overflow-x:hidden}
+.results-window.compare-mode .compare-fights{grid-template-columns:repeat(2,minmax(0,1fr));min-width:0;width:100%}
+.results-window.compare-mode .compare-fight,.results-window.compare-mode .compare-table-wrap{min-width:0;max-width:100%;box-sizing:border-box}
+.results-window.compare-mode .compare-table-wrap{width:100%;overflow-x:hidden}
+.results-window.compare-mode .compare-table{width:100%;min-width:0;max-width:100%;table-layout:fixed;box-sizing:border-box}
+.results-window.compare-mode .compare-table th,.results-window.compare-mode .compare-table td{padding:clamp(4px,.75vw,9px) clamp(3px,.7vw,8px);white-space:normal;overflow-wrap:anywhere;word-break:break-word}
+.results-window.compare-mode .compare-table th:first-child,.results-window.compare-mode .compare-table td:first-child{width:16%}
+@media(max-width:720px){.results-window.compare-mode .compare-fights{grid-template-columns:minmax(0,1fr)}.results-window.compare-mode .compare-table{font-size:9px}}
+/* 7DS Origin horizontal live dashboard */
+:root{--canvas:#0b101d;--surface:#151f30;--surface-raised:#1b2638;--line:#35445b;--text-main:#f4f3f5;--text-muted:#9daec2;--gold:#dfb94f;--blue:#66b9e9;--green:#39d4a2;--violet:#9b8be6}
+body{width:100%;min-height:100vh;padding:0!important;overflow-x:hidden;overflow-y:auto;background:radial-gradient(ellipse at 50% -18%,#263353 0,transparent 55%),var(--canvas);scrollbar-width:none}
+body::-webkit-scrollbar{display:none}
+main.panel{display:block;width:100%!important;max-width:none!important;min-height:100vh!important;margin:0!important;padding:0 28px 22px!important;border:0!important;border-radius:0!important;background:linear-gradient(165deg,#111a2a 0%,#0d1421 75%,#111324 100%)!important;box-shadow:none!important}
+main.panel>header.window-titlebar{position:sticky;top:0;z-index:20;height:56px;margin:0 -28px 18px;padding:0 18px;border:0;border-bottom:1px solid #c2a95a55;border-radius:0;align-items:center;gap:12px;background:radial-gradient(ellipse at 16% 155%,#427d8870 0,transparent 37%),radial-gradient(ellipse at 84% -130%,#8065ac55 0,transparent 46%),linear-gradient(105deg,#142b36,#1a2435 51%,#28203a);box-shadow:0 4px 18px #05081266;user-select:none}
+main.panel>header.window-titlebar::before{position:absolute;inset:0;content:"";pointer-events:none;background:repeating-linear-gradient(125deg,transparent 0 55px,#ffffff09 56px 57px,transparent 58px 110px),linear-gradient(180deg,#ffffff0a,transparent 55%)}
+.window-titlebar>*{position:relative;z-index:1}
+.window-titlebar .brand{flex:1;gap:9px;font-size:15px;letter-spacing:.35px;text-shadow:0 1px 5px #06111b99}
+.window-titlebar .brand-mark{width:27px;height:27px;flex-basis:27px;border-color:#e3c66b88;background:#e3c66b1a;color:#efd477}
+.title-credit{position:absolute!important;left:50%;transform:translateX(-50%);color:#d4c38d;font-size:11px;letter-spacing:.35px;white-space:nowrap;pointer-events:none}
+.title-credit strong{color:#f2d887;font-weight:750}
+.window-titlebar .badge{margin-right:4px}
+.dashboard-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:12px}
+.kpi-card{display:flex;min-width:0;min-height:88px;flex-direction:column;justify-content:center;padding:13px 17px;border:1px solid #344158;border-radius:14px;background:linear-gradient(145deg,#192436,#141d2d);box-shadow:inset 0 1px #ffffff09}
+.kpi-label{color:#9daec2;font-size:10px;font-weight:650;letter-spacing:1px}
+.kpi-card strong{margin-top:6px;color:#f6f2e8;font-size:23px;font-variant-numeric:tabular-nums;line-height:1.12;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi-card small{margin-top:5px;color:#8292a8;font-size:10px}
+.kpi-damage{border-color:#8b743c77}.kpi-damage strong{color:#f2d274}
+.kpi-dps strong{color:#a8e3ef}.kpi-healing strong{color:#71dfb7}.kpi-duration strong{color:#d3c5ff}
+.auto-strip{display:flex;align-items:center;gap:10px;margin-bottom:13px;padding:10px 13px;border:1px solid #39465c;border-radius:10px;background:linear-gradient(100deg,#192436,#1c1d31);color:#b9c7d9;font-size:11px;line-height:1.45}
+.auto-strip .intro-mark{padding:4px 7px;border:1px solid #71d6e455;border-radius:6px;background:#71d6e414;color:#8de6ef;font-size:9px}
+.dashboard-content{display:grid;grid-template-columns:minmax(0,1.72fr) minmax(310px,.9fr);gap:14px;align-items:stretch}
+.ranking-panel,.live-chart-card,.highlights-card{min-width:0;padding:15px 16px;border:1px solid #35435a;border-radius:15px;background:linear-gradient(150deg,#182336,#131c2b);box-shadow:inset 0 1px #ffffff08}
+.ranking-panel{display:flex;min-height:440px;flex-direction:column}
+.ranking-panel>.section-heading,.live-chart-card>.section-heading,.highlights-card>.section-heading{margin-bottom:5px;color:#f0edf2;font-size:14px}
+.section-heading .chart-legend{display:flex;align-items:center;gap:12px;margin:0;color:#9eacc1;font-size:10px;font-weight:500;letter-spacing:0;text-transform:none}
+.section-heading .legend-item{gap:5px}.section-heading .legend-mark{width:9px;height:6px;background:#66b9e9}.section-heading .legend-mark.healing{background:#39d4a2}
+#rows{display:flex;flex:1;flex-direction:column;gap:5px;min-height:0}
+#rows .player{padding:10px 9px 8px;border:1px solid #2b3a50;border-radius:10px;background:linear-gradient(110deg,#1c293d,#172235)}
+#rows .player-head{margin-bottom:6px;color:#e9edf4;font-size:12px}
+#rows .bar{height:9px;background:#303c50}
+#rows .heal-row{margin-top:4px}.heal-bar{height:3px;background:#263448}.heal-value{min-width:82px;color:#69d9b0;font-size:9px}
+#rows .empty{display:grid;flex:1;min-height:240px;place-items:center;padding:22px;border:1px dashed #3b4a60;border-radius:11px;background:#111b2a80;color:#a5b3c6;font-size:13px}
+.dashboard-sidebar{display:flex;min-width:0;flex-direction:column;gap:14px}
+.live-chart-card{flex:1;min-height:255px}.card-subtitle{margin:0;color:#8999af;font-size:10px}
+.live-pace-chart{display:block;width:100%;height:176px;margin-top:12px;overflow:visible}
+.pace-grid{fill:none;stroke:#354157;stroke-dasharray:3 6;stroke-width:1}
+.pace-label{fill:#a5b2c5;font-size:9px;font-family:Segoe UI,Arial,sans-serif;letter-spacing:.5px}
+.pace-axis{fill:#8290a6;font-size:9px;font-family:Segoe UI,Arial,sans-serif}
+.pace-line{fill:none;stroke-width:2.6;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;filter:drop-shadow(0 0 3px #8de5ed40)}
+.damage-pace{stroke:#6bd1e6}.healing-pace{stroke:#39d4a2}
+.pace-empty{position:relative;display:grid;height:85px;margin-top:-112px;place-items:center;color:#8392a8;font-size:11px;pointer-events:none}
+.highlights-card{min-height:164px}.highlight-row{display:grid;grid-template-columns:22px minmax(0,1fr) auto;align-items:center;gap:8px;padding:10px 0;border-top:1px solid #2c394d;color:#bdc8d8;font-size:11px}
+.highlight-row:first-of-type{margin-top:9px}.highlight-row strong{color:#e9e8f0;font-size:11px;text-align:right}.highlight-icon{display:grid;width:21px;height:21px;place-items:center;border-radius:50%;font-size:12px}.damage-icon{background:#d6ae491b;color:#f0d16f}.dps-icon{background:#39d4a21a;color:#69dfb7}.crit-icon{background:#9b8be61a;color:#c3b8fa}
+main.panel>footer{align-items:center;margin-top:13px;padding:10px 0;border-top:1px solid #303d51;border-bottom:1px solid #303d51;color:#c2ccda;font-size:11px}
+.footer-right{display:flex;flex-direction:row;align-items:center;gap:9px}
+.results-open{min-width:185px;min-height:34px;margin:0;border-color:#8b78d5;background:linear-gradient(180deg,#6653a5,#4d3e83);box-shadow:0 4px 14px #100d2244;color:#fff}
+.save-area{min-height:47px;margin:9px 0 5px}.button-primary{border-color:#e1c364;background:linear-gradient(180deg,#d7b958,#ae8d38);box-shadow:0 4px 12px #aa873b28;color:#211b10}.button-primary:disabled{border-color:#4b5062;background:#292d3b;color:#888ea0}
+.save-hint{color:#9eacc1}
+.display-card,.manual-controls{margin-top:10px;padding:12px 14px;border-color:#35435a;border-radius:13px;background:linear-gradient(145deg,#182336,#141d2c)}
+.display-card .section-heading,.manual-controls .section-heading{color:#f0edf2;font-size:12px}
+.overlay-actions{gap:8px}.overlay-actions .button-primary{min-height:34px;border-color:#8f7cdc;background:linear-gradient(180deg,#7060b6,#55458f);color:#fff}
+.overlay-opacity{gap:7px;margin-left:3px;color:#aebbd0}.overlay-opacity input{accent-color:#70c8e5}
+.overlay-help{color:#8998ad;font-size:10px}
+.manual-controls #status{color:#9fb0c5}
+.app-credit{display:none}
+@media(max-width:980px){main.panel{padding:0 17px 18px!important}main.panel>header.window-titlebar{margin:0 -17px 14px}.dashboard-content{grid-template-columns:minmax(0,1.72fr) minmax(275px,.78fr)}.dashboard-kpis{gap:8px}.kpi-card{padding:12px}.kpi-card strong{font-size:20px}}
+@media(max-width:760px){.title-credit{display:none}.dashboard-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.dashboard-content{grid-template-columns:minmax(0,1fr)}.ranking-panel{min-height:350px}.dashboard-sidebar{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.live-chart-card{min-height:235px}.highlights-card{min-height:235px}.window-titlebar .brand{font-size:13px}}
+@media(max-width:540px){main.panel{padding:0 10px 14px!important}main.panel>header.window-titlebar{height:48px;margin:0 -10px 12px;padding:0 9px}.window-controls{margin-right:-9px}.window-control{width:34px;min-width:34px}.window-titlebar .badge{font-size:9px;padding:4px 6px}.dashboard-content{gap:10px}.dashboard-sidebar{grid-template-columns:minmax(0,1fr)}.ranking-panel{padding:11px 10px}.kpi-card{min-height:76px;padding:10px}.kpi-label{font-size:9px}.kpi-card strong{font-size:17px}.kpi-card small{font-size:9px}.auto-strip{font-size:10px}.auto-strip .intro-mark{display:none}.section-heading .chart-legend{gap:7px;font-size:9px}.footer-right{gap:5px}.results-open{min-width:0;padding:7px 9px;font-size:10px}.overlay-actions{align-items:flex-start}.overlay-opacity{width:100%;justify-content:flex-start;margin:3px 0 0}.overlay-opacity input{width:115px}}
+.dashboard-content{grid-template-columns:minmax(0,560px) minmax(310px,1fr);align-items:start}
+.ranking-panel{width:100%;min-height:0;height:fit-content;align-self:start}
+#rows{width:100%;flex:0 0 auto;align-items:stretch}
+#rows .player{width:100%;align-self:stretch}
+#rows .empty{width:100%;align-self:stretch}
+@media(max-width:980px){.dashboard-content{grid-template-columns:minmax(0,1.3fr) minmax(275px,.9fr)}}
+@media(max-width:760px){.dashboard-content{grid-template-columns:minmax(0,1fr)}.ranking-panel{min-height:0}}
+</style>
+</head>
+<body>
+<main class="panel">
+  <header id="windowTitlebar" class="window-titlebar" aria-label="Barra do W99 Origin Damage Tracker">
+    <div class="brand"><span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="13" width="4" height="8" rx="1"/><rect x="10" y="8" width="4" height="13" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg></span><span>W99 ORIGIN DAMAGE TRACKER</span></div>
+    <div class="title-credit">Criado por <strong>W99eiei</strong></div>
+    <span id="capturebadge" class="badge">INICIANDO</span>
+    <nav class="window-controls" aria-label="Controles da janela">
+      <button class="window-control" type="button" aria-label="Minimizar" title="Minimizar" onclick="windowAction('minimize')">&#x2212;</button>
+      <button class="window-control maximize" type="button" aria-label="Maximizar ou restaurar" title="Maximizar ou restaurar" onclick="windowAction('toggle-maximize')">&#x25A1;</button>
+      <button class="window-control close" type="button" aria-label="Fechar W99 Origin Damage Tracker" title="Fechar" onclick="quitMeter()">&#x2715;</button>
+    </nav>
+  </header>
+  <section class="dashboard-kpis" aria-label="Resumo da luta">
+    <article class="kpi-card kpi-damage"><span class="kpi-label">DANO TOTAL DO GRUPO</span><strong id="damage">0</strong><small>acumulado no conteúdo</small></article>
+    <article class="kpi-card kpi-dps"><span class="kpi-label">DPS MÉDIO</span><strong id="groupDps">0</strong><small>do grupo</small></article>
+    <article class="kpi-card kpi-healing"><span class="kpi-label">CURA DO GRUPO</span><strong id="healingTotal">0</strong><small id="healingEvents">0 eventos de cura</small></article>
+    <article class="kpi-card kpi-duration"><span class="kpi-label">TEMPO</span><strong id="duration">0s</strong><small id="raidstate">Placar automático</small></article>
+  </section>
+  <div class="auto-strip"><span class="intro-mark">AUTO</span><span>O placar acompanha a luta automaticamente. Salve o resultado manualmente ou ative o salvamento automático.</span></div>
+  <section class="dashboard-content">
+    <div class="ranking-panel">
+      <div class="section-heading"><span>Dano por jogador</span><span class="chart-legend" aria-label="Legenda"><span class="legend-item"><i class="legend-mark"></i>Dano</span><span class="legend-item"><i class="legend-mark healing"></i>Cura</span></span></div>
+      <section id="rows" aria-live="polite"><div class="empty">Aguardando dados de combate…</div></section>
+    </div>
+    <aside class="dashboard-sidebar">
+      <section class="live-chart-card">
+        <div class="section-heading"><span>Ritmo da luta</span><span class="section-kicker">Dano e cura</span></div>
+        <p class="card-subtitle">Intensidade ao longo do conteúdo</p>
+        <svg id="livePaceChart" class="live-pace-chart" viewBox="0 0 400 190" preserveAspectRatio="none" role="img" aria-label="Ritmo de dano e cura durante a luta">
+          <path class="pace-grid" d="M34 28H394M34 62H394M34 96H394M34 126H394M34 158H394"/>
+          <text x="0" y="39" class="pace-label">DANO</text><text x="0" y="138" class="pace-label">CURA</text>
+          <path id="damagePaceLine" class="pace-line damage-pace" d=""/><path id="healingPaceLine" class="pace-line healing-pace" d=""/>
+          <text x="34" y="181" class="pace-axis">0s</text><text id="paceMidLabel" x="214" y="181" text-anchor="middle" class="pace-axis">0s</text><text id="paceEndLabel" x="394" y="181" text-anchor="end" class="pace-axis">0s</text>
+        </svg>
+        <div id="paceEmpty" class="pace-empty">Aguardando dano ou cura do grupo…</div>
+      </section>
+      <section class="highlights-card">
+        <div class="section-heading"><span>Destaques</span><span class="section-kicker">Nesta luta</span></div>
+        <div class="highlight-row"><span class="highlight-icon damage-icon">✦</span><span>Maior dano</span><strong id="highlightDamage">—</strong></div>
+        <div class="highlight-row"><span class="highlight-icon dps-icon">↗</span><span>Maior DPS</span><strong id="highlightDps">—</strong></div>
+        <div class="highlight-row"><span class="highlight-icon crit-icon">✧</span><span>Taxa de críticos</span><strong id="highlightCrit">—</strong></div>
+      </section>
+    </aside>
+  </section>
+  <footer>
+    <span>DPS pessoal: <strong id="personal-dps">—</strong></span>
+    <div class="footer-right"><button id="openResults" class="results-open" onclick="openSavedResults()">Abrir resultados salvos</button></div>
+  </footer>
+  <div class="save-area"><button id="saveResult" class="button-primary" onclick="saveCurrentResult()">Salvar resultado</button><label class="save-hint autosave-option"><input id="autoSaveResults" type="checkbox" checked onchange="setAutoSave(this.checked)"> Salvar automaticamente após o conteúdo</label></div>
+  <div id="saveStatus" class="status" role="status"></div>
+  <section class="display-card" aria-label="Configurações da sobreposição">
+    <div class="section-heading"><span>Sobreposição no jogo</span><span class="section-kicker">Ajustes visuais</span></div>
+    <div class="overlay-actions"><button id="overlayToggle" class="button-primary" onclick="toggleOverlay()">Ativando sobreposição automática…</button><button id="overlayManualToggle" onclick="toggleManualOverlay()" disabled>Ocultar sobreposição agora</button><button id="overlayClicks" onclick="toggleOverlayClickthrough()" aria-label="Ativar cliques pass-through" title="Ativar cliques pass-through" disabled></button><label class="overlay-opacity" for="overlayOpacity"><span>Transparência</span><input id="overlayOpacity" type="range" min="40" max="100" step="5" value="90" oninput="previewOverlayOpacity(this.value)" onchange="action('overlay/opacity',{opacity:Number(this.value)/100})"><output id="overlayOpacityValue">90%</output></label></div>
+    <p class="overlay-help">A sobreposição automática aparece somente quando o 7DS Origin está em primeiro plano. Se desativá-la, use “Ativar sobreposição manual” para controlar a exibição por aqui; ela continua restrita ao jogo. Ela some 20 segundos após o fim do conteúdo e reaparece quando outro começa. Para mover, desligue o clique pass-through e arraste pelo cabeçalho. Para desbloquear na sobreposição, passe o cursor sobre o cadeado e clique nele; Ctrl+Shift+F10 também restaura os cliques.</p>
+  </section>
+  <section class="manual-controls" aria-label="Controles manuais">
+    <div class="section-heading"><span>Controles</span></div>
+    <div class="controls">
+      <button id="start" onclick="action('start')">Iniciar captura</button>
+      <button id="stop" onclick="action('stop')" disabled>Parar captura</button>
+      <button onclick="action('reset')">Zerar placar</button>
+      <button onclick="quitMeter()">Encerrar programa</button>
+      <div id="status" class="status" role="status">Conectando ao painel local…</div>
+    </div>
+  </section>
+</main>
+<div id="resultsModal" class="results-modal" role="dialog" aria-modal="true" aria-labelledby="resultsTitle" hidden onclick="if(event.target===this)closeSavedResults()">
+  <section class="results-window">
+    <div class="results-header"><span id="resultsTitle" class="results-title">Resultados salvos</span><button id="closeResults" class="results-close" aria-label="Fechar resultados" onclick="closeSavedResults()">×</button></div>
+    <div class="results-tabs"><button id="listTab" class="results-tab active" onclick="activateResultsTab('list')">Resultados salvos</button><button id="reportTab" class="results-tab" hidden onclick="activateResultsTab('report')"><span id="reportTabLabel">Conteúdo</span><span class="results-tab-close" role="button" aria-label="Fechar aba do relatório" onclick="event.stopPropagation();closeSavedDetail()">×</span></button><button id="compareTab" class="results-tab" hidden onclick="activateResultsTab('compare')"><span>Comparação</span><span class="results-tab-close" role="button" aria-label="Fechar comparação" onclick="event.stopPropagation();closeComparison()">×</span></button></div>
+    <div class="results-content">
+      <div id="savedListPage"><div class="controls"><button onclick="loadSavedResults()">Atualizar lista</button></div><div class="compare-toolbar"><span id="compareSelectionHint">Marque duas lutas para comparar.</span><button id="compareButton" disabled onclick="compareSelectedResults()">Comparar selecionadas</button></div><div id="savedList" class="saved-list">Carregando…</div><p class="help">Os resultados são salvos ao clicar no botão ou automaticamente se essa opção estiver ativada.</p></div>
+      <div id="savedView" class="saved-view result-report-window" hidden></div>
+      <div id="compareView" class="saved-view result-report-window" hidden></div>
+    </div>
+  </section>
+</div>
+<script>
+const token='__TOKEN__';
+const fmt=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:0});
+const fmt2=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2});
+const colors=['#f2bc05','#5aa6ff','#2dcc9a','#ed70b5','#a58bff'];
+const paceSamples={damage:[],healing:[]};let paceLastAt=Date.now(),paceLastDamage=null,paceLastHealing=null,paceAccumDamage=0,paceAccumHealing=0;
+function updateLivePace(state){const now=Date.now(),damage=Number(state.damage)||0,healing=Number(state.heal)||0;if(paceLastDamage!==null){paceAccumDamage+=Math.max(0,damage-paceLastDamage);paceAccumHealing+=Math.max(0,healing-paceLastHealing)}paceLastDamage=damage;paceLastHealing=healing;if(now-paceLastAt>=950){paceSamples.damage.push(paceAccumDamage);paceSamples.healing.push(paceAccumHealing);if(paceSamples.damage.length>36)paceSamples.damage.shift();if(paceSamples.healing.length>36)paceSamples.healing.shift();paceAccumDamage=0;paceAccumHealing=0;paceLastAt=now}const draw=(id,values,top,bottom)=>{const path=document.getElementById(id);if(!values.length){path.setAttribute('d','');return}const max=Math.max(1,...values);const d=values.map((value,index)=>{const x=34+360*(index/Math.max(1,values.length-1));const y=bottom-(value/max)*(bottom-top);return(index?'L':'M')+x.toFixed(1)+' '+y.toFixed(1)}).join(' ');path.setAttribute('d',d)};draw('damagePaceLine',paceSamples.damage,28,96);draw('healingPaceLine',paceSamples.healing,126,158);const hasEvents=paceSamples.damage.some(v=>v>0)||paceSamples.healing.some(v=>v>0);document.getElementById('paceEmpty').hidden=hasEvents;const seconds=Math.min(36,paceSamples.damage.length);document.getElementById('paceMidLabel').textContent=Math.round(seconds/2)+'s';document.getElementById('paceEndLabel').textContent=seconds+'s'}
+const characterNames={ban:'Ban',howzer:'Howzer',daisy:'Daisy',lancelot:'Lancelot',elizabeth:'Elizabeth',meliodas:'Meliodas',gowther:'Gowther',jericho:'Jericho',manny:'Manny',merlin:'Merlin',guila:'Guila',escanor:'Escanor',estia:'Estia',king:'King',diane:'Diane',hawk:'Hawk',gilthunder:'Gilthunder',hendrickson:'Hendrickson',arthur:'Arthur',zeldris:'Zeldris',derieri:'Derieri',monspiet:'Monspeet',drole:'Drole',gloxinia:'Gloxinia',fraudrin:'Fraudrin',slater:'Slater',vivian:'Vivian',helbram:'Helbram',matrona:'Matrona',calla:'Calla',elaine:'Elaine',shin:'Shin',thornar:'Thornar'};
+const weaponTokens=new Set(['book','staff','wand','sword1h','sword2h','sworddual','cudgel3c','gauntlets','rapier','axe','spear','shield','bow']);
+let lastSavedSeen=null,currentSavedResult=null,activeResultsTab='list',overlayVisible=false,overlayAutoEnabled=false,overlayManualHidden=false,overlayManualEnabled=false,overlayClickthrough=false;const selectedResultsForCompare=new Set();
+function formatSkillName(id){const tokens=String(id||'').split('_').filter(Boolean);if(tokens[0]==='grade'&&/^\d+$/.test(tokens[1]||''))tokens.splice(0,2);let who='';if(tokens.length&&!/^\d+$/.test(tokens[0])){const raw=tokens.shift();who=characterNames[raw]||raw.charAt(0).toUpperCase()+raw.slice(1)}else if(tokens.length&&/^\d{5,}$/.test(tokens[0])){who='Personagem '+tokens.shift()}const parts=[];for(let i=0;i<tokens.length;i++){const t=tokens[i];if(weaponTokens.has(t))continue;if(t==='skill'){const key=tokens[i+1];if(key==='tag'){parts.push('Troca de personagem');i++}else if(key==='rmb'){parts.push('Habilidade (botão direito)');i++}else if(key&&/^[qer]$/i.test(key)){parts.push('Habilidade '+key.toUpperCase());i++}else parts.push('Habilidade');continue}if(t==='normalatk'){parts.push('Ataque normal');continue}if(t==='tag'){parts.push('Troca de personagem');continue}if(t==='rmb'){parts.push('Ataque (botão direito)');continue}if(t==='laser'){parts.push('Laser');continue}if(t==='boom'){parts.push('Explosão');continue}if(t==='enchant'){parts.push('Encantado');continue}if(t==='ready'){parts.push('Preparação');continue}if(t==='just'){parts.push('Precisão');continue}if(t==='hit'){parts.push('Impacto');continue}if(/^atk\d+$/.test(t)){parts.push('Golpe '+t.slice(3));continue}if(/^\d+$/.test(t)){parts.push('Golpe '+t);continue}if(/^p\d+$/i.test(t)){parts.push('Parte '+t.slice(1));continue}parts.push(t.charAt(0).toUpperCase()+t.slice(1))}return [who,...parts].filter(Boolean).join(' · ')||String(id||'Habilidade')}
+function skillCharacterName(id){const tokens=String(id||'').split('_').filter(Boolean);if(tokens[0]==='grade'&&/^\d+$/.test(tokens[1]||''))tokens.splice(0,2);const key=tokens[0]||'';if(!key||/^\d+$/.test(key))return 'Outros / não identificados';return characterNames[key]||key.charAt(0).toUpperCase()+key.slice(1)}
+function skillIconUrl(id){const tokens=String(id||'').split('_').filter(Boolean);if(tokens[0]==='grade'&&/^\d+$/.test(tokens[1]||''))tokens.splice(0,2);if(!tokens.length||/^\d+$/.test(tokens[0]))return '';let character=tokens.shift();const aliases={dredrin:'dreydrin',gilthunder:'gil_thunder',slater:'slader',mannie:'manny'};character=aliases[character]||character;const weapon=tokens.find(token=>weaponTokens.has(token));const skillIndex=tokens.indexOf('skill');if(skillIndex>=0){const key=tokens[skillIndex+1];if(key==='tag')return 'https://www.sevencodex.com/icons/skills/icon_tagskill.webp';const variants={q:'normalskill',e:'activethird',r:'ultimateskill'};if(variants[key]&&weapon)return `https://www.sevencodex.com/icons/skills/${character}_${weapon}_${variants[key]}.webp`}if(tokens.includes('normalatk')&&weapon)return `https://www.sevencodex.com/icons/skills/common_${weapon}_normalattack.webp`;return ''}
+const characterIconFiles={ban:'ban',bug:'bug',clotho:'clotho',klotho:'clotho',daisy:'daisy',derieri:'derieri',diane:'diane',drake:'drake',dredrin:'dredrin',dreyfus:'dreyfus',elaine:'elaine',elizabeth:'elizabeth',escanor:'escanor',estia:'estia',gilthunder:'gilthunder',gowther:'gowther',griamore:'griamore',guila:'guila',hendrickson:'hendrickson',howzer:'howzer',jericho:'jericho',king:'king',mannie:'mannie',manny:'mannie',meliodas:'meliodas',merlin:'merlin',slater:'slater',tioreh:'tioreh',tristan:'tristan'};
+const characterIconRemote={calla:'https://7dsorigin.app/images/characters/calla.webp',lancelot:'https://7dsorigin.app/images/characters/lancelot.webp'};
+function createCharacterIcon(name){const words=String(name||'').replace(/[^A-Za-zÀ-ÿ\s]/g,' ').trim().split(/\s+/).filter(Boolean);const initials=String(name||'').startsWith('Outros')?'?':words.length>1?(words[0][0]+words[1][0]):(words[0]||'?').slice(0,2);let hash=0;for(const char of String(name||''))hash=(hash*31+char.codePointAt(0))%360;const icon=document.createElement('span');icon.className='character-icon';icon.textContent=initials.toUpperCase();icon.title=name;icon.setAttribute('aria-hidden','true');icon.style.backgroundColor=`hsl(${hash} 48% 30%)`;icon.style.borderColor=`hsl(${hash} 52% 54%)`;const key=String(name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]/g,'');const file=characterIconFiles[key];const remote=characterIconRemote[key];if(file||remote){const portrait=document.createElement('img');portrait.className=remote&&!file?'remote-character-portrait':'';portrait.src=file?`/assets/characters/${file}.${file==='estia'?'webp':'png'}`:remote;portrait.alt='';portrait.loading='lazy';portrait.onerror=()=>{if(file&&remote){portrait.src=remote;portrait.className='remote-character-portrait';return}portrait.remove()};icon.append(portrait)}return icon}
+function groupSkillsByCharacter(skills,amountKey='damage'){const groups=new Map();for(const skill of skills||[]){const name=skillCharacterName(skill.skill_id);if(!groups.has(name))groups.set(name,[]);groups.get(name).push(skill)}return [...groups.entries()].map(([name,items])=>({name,skills:items,total:items.reduce((sum,item)=>sum+(item[amountKey]||0),0)})).sort((a,b)=>b.total-a.total||a.name.localeCompare(b.name))}
+async function action(name,data={}){try{const r=await fetch('/api/'+name,{method:'POST',headers:{'Content-Type':'application/json','X-DPS-Token':token},body:JSON.stringify(data)});const x=await r.json();if(!r.ok)throw Error(x.error||'Falha no comando; atualize a janela');await update();return true}catch(e){const s=document.getElementById('status');s.textContent=e.message;s.className='status error';return false}}
+async function windowAction(name){try{const r=await fetch('/api/window/'+name,{method:'POST',headers:{'Content-Type':'application/json','X-DPS-Token':token},body:'{}'});const data=await r.json();if(!r.ok)throw Error(data.error||'Não foi possível alterar a janela');if(name==='toggle-maximize'){const button=document.querySelector('.window-control.maximize');button.textContent=data.maximized?'❐':'□';button.title=data.maximized?'Restaurar':'Maximizar';button.setAttribute('aria-label',button.title)}}catch(e){const status=document.getElementById('status');status.textContent=e.message;status.className='status error'}}
+const titlebar=document.getElementById('windowTitlebar');
+titlebar.addEventListener('mousedown',event=>{if(event.button!==0||event.target.closest('.window-controls'))return;if(event.detail>1){windowAction('toggle-maximize');return}event.preventDefault();fetch('/api/window/drag',{method:'POST',headers:{'Content-Type':'application/json','X-DPS-Token':token},body:'{}'}).then(async response=>{if(!response.ok){const data=await response.json();throw Error(data.error||'Não foi possível mover a janela')}}).catch(error=>{const status=document.getElementById('status');status.textContent=error.message;status.className='status error'})});
+async function toggleOverlay(){return action(overlayAutoEnabled?'overlay/close':'overlay/open')}
+async function toggleManualOverlay(){const enabled=overlayAutoEnabled?overlayManualHidden:!overlayManualEnabled;return action('overlay/manual',{enabled})}
+async function toggleOverlayClickthrough(){return action('overlay/clickthrough',{enabled:!overlayClickthrough})}
+const overlayLockIcons={locked:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>',unlocked:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 7.8-1"></path></svg>'};
+function previewOverlayOpacity(value){document.getElementById('overlayOpacityValue').textContent=value+'%'}
+async function saveCurrentResult(){const button=document.getElementById('saveResult'),s=document.getElementById('saveStatus');button.disabled=true;try{const r=await fetch('/api/save',{method:'POST',headers:{'Content-Type':'application/json','X-DPS-Token':token},body:'{}'});const x=await r.json();if(!r.ok)throw Error(x.error||'Não foi possível salvar');s.textContent='Resultado salvo nas estatísticas deste app.';s.className='status';await loadSavedResults()}catch(e){s.textContent=e.message;s.className='status error'}finally{button.disabled=false}}
+async function setAutoSave(enabled){const box=document.getElementById('autoSaveResults'),status=document.getElementById('saveStatus');try{const r=await fetch('/api/settings/autosave',{method:'POST',headers:{'Content-Type':'application/json','X-DPS-Token':token},body:JSON.stringify({enabled})});const data=await r.json();if(!r.ok)throw Error(data.error||'Não foi possível atualizar essa opção');box.checked=!!data.enabled;status.textContent=box.checked?'Salvamento automático ativado.':'Salvamento automático desativado.';status.className='status'}catch(e){box.checked=!enabled;status.textContent=e.message;status.className='status error'}}
+function activateResultsTab(tab){if(tab==='report'&&!currentSavedResult)tab='list';if(tab==='compare'&&!document.getElementById('compareTab').dataset.ready)tab='list';activeResultsTab=tab;document.querySelector('.results-window').classList.toggle('compare-mode',tab==='compare');document.getElementById('savedListPage').hidden=tab!=='list';document.getElementById('savedView').hidden=tab!=='report';document.getElementById('compareView').hidden=tab!=='compare';document.getElementById('listTab').classList.toggle('active',tab==='list');document.getElementById('reportTab').classList.toggle('active',tab==='report');document.getElementById('compareTab').classList.toggle('active',tab==='compare');document.getElementById('resultsTitle').textContent=tab==='list'?'Resultados salvos':tab==='compare'?'Comparação de conteúdos':'Relatório do conteúdo'}
+function openSavedResults(){const modal=document.getElementById('resultsModal');modal.hidden=false;activateResultsTab('list');document.getElementById('closeResults').focus();loadSavedResults()}
+function closeSavedResults(){document.getElementById('resultsModal').hidden=true;document.querySelector('.results-window').classList.remove('compare-mode');document.getElementById('openResults').focus()}
+document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!document.getElementById('resultsModal').hidden){if(activeResultsTab==='report')closeSavedDetail();else if(activeResultsTab==='compare')closeComparison();else closeSavedResults()}});
+async function loadSavedResults(){const host=document.getElementById('savedList');try{const r=await fetch('/api/saved',{cache:'no-store'});if(!r.ok)throw Error('Não foi possível ler as estatísticas salvas');const items=await r.json();const valid=new Set(items.map(item=>String(item.id)));for(const id of selectedResultsForCompare)if(!valid.has(String(id)))selectedResultsForCompare.delete(id);host.replaceChildren();if(!items.length){host.textContent='Nenhum resultado salvo ainda.';updateCompareSelection();return}for(const item of items){const entry=document.createElement('div');entry.className='saved-entry';const button=document.createElement('button');button.className='saved-item';const date=new Date(item.saved_at).toLocaleString();button.textContent=`${item.content||'Conteúdo'} · ${date} · ${fmt.format(item.total_damage||0)} dano${item.total_healing?` · ${fmt.format(item.total_healing)} cura`:''}${item.saved_automatically?' · automático':''}`;button.onclick=()=>showSavedResult(item.id);const checkboxLabel=document.createElement('label');checkboxLabel.className='saved-compare-check';const checkbox=document.createElement('input');checkbox.type='checkbox';checkbox.checked=selectedResultsForCompare.has(String(item.id));checkbox.disabled=!checkbox.checked&&selectedResultsForCompare.size>=2;checkbox.setAttribute('aria-label','Selecionar para comparar');checkbox.onchange=()=>{const id=String(item.id);if(checkbox.checked)selectedResultsForCompare.add(id);else selectedResultsForCompare.delete(id);updateCompareSelection()};checkboxLabel.append(checkbox,document.createTextNode('Comparar'));const remove=document.createElement('button');remove.className='saved-delete';remove.textContent='Excluir';remove.setAttribute('aria-label','Excluir '+button.textContent);remove.onclick=()=>deleteSavedResult(item.id,button.textContent);entry.append(button,checkboxLabel,remove);host.append(entry)}updateCompareSelection()}catch(e){host.textContent=e.message}}
+async function deleteSavedResult(id,label){if(!confirm(`Excluir este resultado salvo?\n\n${label}\n\nEsta ação não pode ser desfeita.`))return;try{const r=await fetch('/api/saved/delete',{method:'POST',headers:{'Content-Type':'application/json','X-DPS-Token':token},body:JSON.stringify({id})});const result=await r.json();if(!r.ok)throw Error(result.error||'Não foi possível excluir o resultado');selectedResultsForCompare.delete(String(id));if(currentSavedResult===id)closeSavedDetail();await loadSavedResults()}catch(e){alert(e.message)}}
+function closeSavedDetail(){const box=document.getElementById('savedView');box.replaceChildren();currentSavedResult=null;document.getElementById('reportTab').hidden=true;activateResultsTab('list')}
+function updateCompareSelection(){const count=selectedResultsForCompare.size;document.getElementById('compareSelectionHint').textContent=count===0?'Marque duas lutas para comparar.':count===1?'1 luta selecionada; marque mais uma.':'2 lutas selecionadas; pronto para comparar.';document.getElementById('compareButton').disabled=count!==2;for(const checkbox of document.querySelectorAll('.saved-compare-check input'))checkbox.disabled=!checkbox.checked&&count>=2}
+function closeComparison(){const view=document.getElementById('compareView');view.replaceChildren();document.querySelector('.results-window').classList.remove('compare-mode');document.getElementById('compareTab').hidden=true;delete document.getElementById('compareTab').dataset.ready;activateResultsTab('list')}
+function renderPlayerHeadToHead(host,a,b){const panel=document.createElement('section');panel.className='player-v-player';const title=document.createElement('h3');title.textContent='Comparar jogadores';const intro=document.createElement('p');intro.className='help';intro.textContent='Veja os integrantes lado a lado. Todos começam selecionados; use as caixas para filtrar.';const names=[...new Set([...(a.ranking||[]),...(b.ranking||[])].map(p=>p.name).filter(Boolean))];panel.append(title,intro);if(!names.length){const note=document.createElement('p');note.className='help';note.textContent='Nenhum jogador disponível nestes resultados.';panel.append(note);host.append(panel);return}const pickers=document.createElement('div');pickers.className='player-pickers multi-player-pickers';const selected=new Set(names);for(const name of names){const label=document.createElement('label');label.className='player-check';const input=document.createElement('input');input.type='checkbox';input.checked=true;input.onchange=()=>{if(input.checked)selected.add(name);else selected.delete(name);draw()};label.append(input,document.createTextNode(name));pickers.append(label)}const results=document.createElement('div');results.className='all-player-comparison';const draw=()=>{results.replaceChildren();for(const [letter,saved] of [['Luta A',a],['Luta B',b]]){const card=document.createElement('div');card.className='player-head-card all-player-card';const heading=document.createElement('h4');heading.textContent=letter+' · '+(saved.content||'Conteúdo');card.append(heading);const players=names.filter(name=>selected.has(name)).map(name=>(saved.ranking||[]).find(p=>p.name===name)||{name,damage:0,dps:0,critical_rate_percent:0,healing:0,hits:0});const maxDamage=Math.max(1,...players.map(p=>p.damage||0));const maxHealing=Math.max(1,...players.map(p=>p.healing||0));const table=document.createElement('table');table.className='all-player-table';const head=document.createElement('thead');head.innerHTML='<tr><th>Jogador</th><th>Dano</th><th>Cura</th><th>DPS</th><th>Críticos</th><th>Acertos</th></tr>';table.append(head);const body=document.createElement('tbody');for(const [index,p] of players.entries()){const row=document.createElement('tr');const name=document.createElement('th');name.scope='row';name.textContent=p.name;row.append(name);for(const [key,max,kind] of [['damage',maxDamage,'damage'],['healing',maxHealing,'healing']]){const cell=document.createElement('td');cell.className='all-player-amount';const amount=document.createElement('strong');amount.textContent=fmt.format(p[key]||0);const track=document.createElement('i');const fill=document.createElement('b');fill.className=kind;fill.style.width=Math.max(0,Math.min(100,(p[key]||0)*100/max))+'%';track.append(fill);cell.append(amount,track);row.append(cell)}for(const value of [fmt2.format(p.dps||0),fmt2.format(p.critical_rate_percent||0)+'%',fmt.format(p.hits||0)]){const cell=document.createElement('td');cell.textContent=value;row.append(cell)}body.append(row)}if(!players.length){const row=document.createElement('tr');const cell=document.createElement('td');cell.colSpan=6;cell.textContent='Marque ao menos um jogador para ver a comparação.';row.append(cell);body.append(row)}table.append(body);card.append(table);results.append(card)}};panel.append(pickers,results);host.append(panel);draw()}async function compareSelectedResults(){const ids=[...selectedResultsForCompare];if(ids.length!==2)return;const view=document.getElementById('compareView');view.replaceChildren();document.getElementById('compareTab').hidden=false;document.getElementById('compareTab').dataset.ready='true';activateResultsTab('compare');view.textContent='Carregando comparação…';try{const records=await Promise.all(ids.map(async id=>{const r=await fetch('/api/saved/'+encodeURIComponent(id),{cache:'no-store'});if(!r.ok)throw Error('Não foi possível abrir uma das lutas selecionadas');return r.json()}));renderSavedComparison(records[0],records[1]);renderPlayerHeadToHead(view,records[0],records[1])}catch(e){view.textContent=e.message}}
+function csvCell(value){return '"'+String(value??'').replace(/"/g,'""')+'"'}
+function downloadCsv(filename,rows){const content='\ufeff'+rows.map(row=>row.map(csvCell).join(';')).join('\r\n');const link=document.createElement('a');link.href=URL.createObjectURL(new Blob([content],{type:'text/csv;charset=utf-8'}));link.download=filename;link.click();setTimeout(()=>URL.revokeObjectURL(link.href),1000)}
+function resultFileName(saved,extension='csv'){return '7DS_'+String(saved.content||'Conteudo').normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/gi,'_')+'_'+String(saved.saved_at||'').replace(/[^0-9]/g,'').slice(0,14)+'.'+extension}
+function exportSavedResult(saved){const rows=[['Relatório',saved.content||'Conteúdo'],['Data',new Date(saved.saved_at).toLocaleString()],['Dano total',saved.total_damage||0],['DPS médio',saved.dps||0],['Cura total',saved.total_healing||0],['Duração (s)',saved.duration||0],[],['Jogador','Dano','DPS','Críticos','Taxa críticos (%)','Cura','Acertos','Dano recebido','Acertos recebidos','KOs inferidos','Retornos','Segundos ativos','Maior pausa (s)','Pico dano DPS 10s']];for(const p of saved.ranking||[])rows.push([p.name,p.damage||0,p.dps||0,p.critical_hits||0,p.critical_rate_percent||0,p.healing||0,p.hits||0,p.damage_taken||0,p.damage_taken_hits||0,p.deaths||0,p.revives||0,p.activity?.active_seconds||0,p.activity?.longest_pause_seconds||0,p.activity?.peak_damage_per_second_10s||0]);rows.push([],['Jogador','Personagem','Habilidade','Dano','Cura','Acertos','Críticos']);for(const p of saved.ranking||[])for(const [key,amount] of [['skills','damage'],['healing_skills','healing']])for(const sk of p[key]||[])rows.push([p.name,skillCharacterName(sk.skill_id),formatSkillName(sk.skill_id),sk.damage||0,sk.healing||0,sk.hits||0,sk.critical_hits||0]);if(saved.boss_segments?.length){rows.push([],['Alvo de chefe','Duração (s)','Dano','DPS','HP máximo observado']);for(const boss of saved.boss_segments)rows.push([boss.label,boss.duration,boss.damage,boss.dps,boss.hp_max_observed||0])}downloadCsv(resultFileName(saved),rows)}
+function exportSavedResultHtml(saved){
+  const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  const players=(saved.ranking||[]).map(player=>{const skills=[...(player.skills||[]).map(skill=>({type:'Dano',name:formatSkillName(skill.skill_id),amount:skill.damage||0,hits:skill.hits||0})),...(player.healing_skills||[]).map(skill=>({type:'Cura',name:formatSkillName(skill.skill_id),amount:skill.healing||0,hits:skill.hits||0}))];const skillRows=skills.map(skill=>`<tr><td>${esc(skill.type)}</td><td>${esc(skill.name)}</td><td>${fmt.format(skill.amount)}</td><td>${fmt.format(skill.hits)}</td></tr>`).join('');const activity=player.activity||{};const survival=player.survival_observed?`<p>Dano recebido: <b>${fmt.format(player.damage_taken||0)}</b> · Acertos recebidos: ${fmt.format(player.damage_taken_hits||0)} · KOs inferidos: ${fmt.format(player.deaths||0)} · Retornos observados: ${fmt.format(player.revives||0)}</p>`:'<p>Sobrevivência: nenhum impacto recebido foi identificado nesta captura.</p>';return `<details class="player"><summary>${esc(player.rank)}. ${esc(player.name)} · ${fmt.format(player.damage||0)} dano</summary><div class="metrics"><span>DPS ${fmt2.format(player.dps||0)}</span><span>Cura ${fmt.format(player.healing||0)}</span><span>Críticos ${fmt2.format(player.critical_rate_percent||0)}%</span><span>Acertos ${fmt.format(player.hits||0)}</span></div><p>Atividade: ${fmt.format(activity.active_seconds||0)}s com ação · maior pausa ${fmt.format(activity.longest_pause_seconds||0)}s · pico em 10s ${fmt2.format(activity.peak_damage_per_second_10s||0)} DPS</p>${survival}<table><thead><tr><th>Tipo</th><th>Habilidade</th><th>Valor</th><th>Eventos</th></tr></thead><tbody>${skillRows||'<tr><td colspan="4">Sem detalhes de habilidades</td></tr>'}</tbody></table></details>`}).join('');
+  const bosses=(saved.boss_segments||[]).map(boss=>`<tr><td>${esc(boss.label)}</td><td>${fmt2.format(boss.duration||0)}s</td><td>${fmt.format(boss.damage||0)}</td><td>${fmt2.format(boss.dps||0)}</td></tr>`).join('');
+  const coverage=saved.party_coverage?.roster_confirmed?`Party identificada: ${saved.party_coverage.roster_count} · Com dano/cura: ${saved.party_coverage.players_with_events}/${saved.party_coverage.roster_count} · Atores observados: ${saved.party_coverage.actors_observed||0}`:'Party não confirmada pelo jogo nesta captura.';
+  const html=`<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>W99 Origin Damage Tracker — ${esc(saved.content||'Conteúdo')}</title><style>body{margin:0;padding:28px;background:#0c0b16;color:#eeeaf8;font:14px Segoe UI,Arial,sans-serif}main{max-width:1180px;margin:auto}header{padding:22px;border:1px solid #47425f;border-radius:16px;background:linear-gradient(120deg,#24203a,#171625)}h1{margin:0 0 8px;font-size:22px}.muted{color:#aaa4bd}.kpis{display:flex;flex-wrap:wrap;gap:9px;margin:18px 0}.kpis span,.player{padding:12px;border:1px solid #393650;border-radius:10px;background:#151426}.kpis b{display:block;margin-top:4px;font-size:16px}.player{display:block;margin:9px 0}.player summary{cursor:pointer;font-weight:700}.metrics{display:flex;flex-wrap:wrap;gap:16px;margin:10px 0;color:#c7c1d9}table{width:100%;margin-top:12px;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid #34314b;text-align:left}section{margin:16px 0}h2{font-size:17px}.note{color:#aaa4bd;font-size:12px}@media(max-width:600px){body{padding:12px}}</style><main><header><h1>W99 Origin Damage Tracker — Relatório</h1><div>${esc(saved.content||'Conteúdo')} · ${esc(new Date(saved.saved_at).toLocaleString())}</div><p class="muted">${esc(coverage)}</p></header><div class="kpis"><span>Dano<b>${fmt.format(saved.total_damage||0)}</b></span><span>DPS médio<b>${fmt2.format(saved.dps||0)}</b></span><span>Cura<b>${fmt.format(saved.total_healing||0)}</b></span><span>Dano recebido<b>${fmt.format(saved.total_damage_taken||0)}</b></span><span>Duração<b>${fmt2.format(saved.duration||0)}s</b></span><span>Críticos<b>${fmt.format(saved.critical_hits||0)} (${fmt2.format(saved.critical_rate_percent||0)}%)</b></span></div>${bosses?`<section><h2>Alvos de chefe</h2><table><thead><tr><th>Alvo</th><th>Duração</th><th>Dano</th><th>DPS</th></tr></thead><tbody>${bosses}</tbody></table><p class="note">Alvos agrupados pelo identificador observado pelo jogo; uma troca de ator em outra fase pode aparecer como novo alvo.</p></section>`:''}<section><h2>Jogadores</h2>${players||'<p>Nenhum jogador registrado.</p>'}</section><p class="note">KOs e retornos são inferidos dos valores de HP reportados nos impactos.</p></main></html>`;
+  const link=document.createElement('a');link.href=URL.createObjectURL(new Blob([html],{type:'text/html;charset=utf-8'}));link.download=resultFileName(saved,'html');link.click();setTimeout(()=>URL.revokeObjectURL(link.href),1000)
+}
+function renderSavedComparison(a,b){const view=document.getElementById('compareView');view.replaceChildren();document.querySelector('.results-window').classList.add('compare-mode');const actionRow=document.createElement('div');actionRow.className='controls';const exportButton=document.createElement('button');exportButton.className='report-export';exportButton.textContent='Exportar comparação CSV';exportButton.onclick=()=>exportComparison(a,b);actionRow.append(exportButton);view.append(actionRow);const fights=document.createElement('div');fights.className='compare-fights';for(const [index,saved] of [a,b].entries()){const card=document.createElement('section');card.className='compare-fight';const title=document.createElement('h3');title.textContent=`Luta ${index===0?'A':'B'} · ${saved.content||'Conteúdo'}`;const date=document.createElement('small');date.textContent=new Date(saved.saved_at).toLocaleString();card.append(title,date);const metrics=document.createElement('div');metrics.className='compare-kpis';for(const [label,key,isDuration] of [['Dano total','total_damage',false],['DPS médio','dps',false],['Cura total','total_healing',false],['Duração','duration',true]]){const cell=document.createElement('div');cell.className='compare-kpi';const caption=document.createElement('small');caption.textContent=label;const value=document.createElement('strong');value.textContent=isDuration?fmt2.format(saved[key]||0)+'s':fmt.format(saved[key]||0);cell.append(caption,value);metrics.append(cell)}card.append(metrics);const roster=document.createElement('div');roster.className='compare-roster';const ranking=saved.ranking||[];const max=Math.max(1,...ranking.map(p=>p.damage||0));for(const player of ranking){const line=document.createElement('div');line.className='compare-player';const name=document.createElement('strong');name.textContent=`${player.rank||''}. ${player.name}`;const damage=document.createElement('span');damage.textContent=fmt.format(player.damage||0);const bar=document.createElement('i');const fill=document.createElement('b');fill.style.width=Math.max(0,Math.min(100,(player.damage||0)*100/max))+'%';bar.append(fill);const foot=document.createElement('em');foot.textContent=`DPS ${fmt2.format(player.dps||0)}  ·  Cura ${fmt.format(player.healing||0)}`;line.append(name,damage,bar,foot);roster.append(line)}if(!ranking.length){roster.textContent='Sem dados de jogadores.'}card.append(roster);fights.append(card)}view.append(fights);const heading=document.createElement('h3');heading.className='compare-delta-heading';heading.textContent='Variação por jogador (B em relação a A)';view.append(heading);const map=new Map();for(const p of a.ranking||[])map.set(p.name,{name:p.name,a:p});for(const p of b.ranking||[]){const row=map.get(p.name)||{name:p.name};row.b=p;map.set(p.name,row)}const players=[...map.values()].sort((x,y)=>(y.b?.damage||y.a?.damage||0)-(x.b?.damage||x.a?.damage||0));const wrap=document.createElement('div');wrap.className='compare-table-wrap';const table=document.createElement('table');table.className='compare-table';const head=document.createElement('thead');head.innerHTML='<tr><th>Jogador</th><th>Dano A</th><th>Dano B</th><th>Variação dano</th><th>DPS A</th><th>DPS B</th><th>Cura A</th><th>Cura B</th></tr>';table.append(head);const body=document.createElement('tbody');for(const player of players){const pa=player.a||{},pb=player.b||{},damageA=Number(pa.damage)||0,damageB=Number(pb.damage)||0;const tr=document.createElement('tr');for(const value of [player.name,fmt.format(damageA),fmt.format(damageB)]){const td=document.createElement('td');td.textContent=value;tr.append(td)}const deltaCell=document.createElement('td');const delta=damageA===0?(damageB===0?0:100):(damageB-damageA)*100/damageA;deltaCell.className='compare-delta '+(delta>0?'positive':delta<0?'negative':'');deltaCell.textContent=(delta>0?'+':'')+fmt2.format(delta)+'%';tr.append(deltaCell);for(const value of [fmt2.format(pa.dps||0),fmt2.format(pb.dps||0),fmt.format(pa.healing||0),fmt.format(pb.healing||0)]){const td=document.createElement('td');td.textContent=value;tr.append(td)}body.append(tr)}table.append(body);wrap.append(table);view.append(wrap)}
+function exportComparison(a,b){const rows=[['Métrica','Luta A','Luta B','Variação B vs A'],['Conteúdo',a.content||'Conteúdo',b.content||'Conteúdo',''],['Data',new Date(a.saved_at).toLocaleString(),new Date(b.saved_at).toLocaleString(),'']];for(const [label,key] of [['Dano total','total_damage'],['DPS médio','dps'],['Cura total','total_healing'],['Duração (s)','duration']]){const av=Number(a[key])||0,bv=Number(b[key])||0;rows.push([label,av,bv,av===0?(bv===0?0:100):(bv-av)*100/av])}rows.push([],['Jogador','Dano A','Dano B','Variação dano (%)','DPS A','DPS B','Cura A','Cura B']);const map=new Map();for(const p of a.ranking||[])map.set(p.name,{a:p});for(const p of b.ranking||[]){const row=map.get(p.name)||{};row.b=p;map.set(p.name,row)}for(const [name,p] of map){const av=Number(p.a?.damage)||0,bv=Number(p.b?.damage)||0;rows.push([name,av,bv,av===0?(bv===0?0:100):(bv-av)*100/av,p.a?.dps||0,p.b?.dps||0,p.a?.healing||0,p.b?.healing||0])}downloadCsv('7DS_comparacao.csv',rows)}
+function makeTimelineChart(timeline,duration){
+  const card=document.createElement('section');card.className='timeline-card';
+  const heading=document.createElement('div');heading.className='timeline-heading';
+  const titleGroup=document.createElement('div');const title=document.createElement('div');title.className='timeline-title';title.textContent='Ritmo da luta';const subtitle=document.createElement('span');subtitle.className='timeline-subtitle';subtitle.textContent='Intensidade por segundo ao longo do conteúdo';titleGroup.append(title,subtitle);
+  const legend=document.createElement('div');legend.className='timeline-legend';for(const [label,healing] of [['Dano',false],['Cura',true]]){const item=document.createElement('span');const dot=document.createElement('i');dot.className='timeline-dot'+(healing?' healing':'');item.append(dot,document.createTextNode(label));legend.append(item)}heading.append(titleGroup,legend);card.append(heading);
+  if(!Array.isArray(timeline)||!timeline.length){const empty=document.createElement('div');empty.className='timeline-empty';empty.textContent='Este resultado não tem dados de linha do tempo. Novas lutas salvas nesta versão já incluirão o gráfico.';card.append(empty);return card}
+  const ns='http://www.w3.org/2000/svg',svg=document.createElementNS(ns,'svg');svg.setAttribute('viewBox','0 0 960 240');svg.setAttribute('preserveAspectRatio','none');svg.setAttribute('role','img');svg.setAttribute('aria-label','Gráfico da intensidade de dano e cura por segundo');svg.classList.add('timeline-svg');
+  const add=(tag,attrs,text)=>{const el=document.createElementNS(ns,tag);for(const [key,value] of Object.entries(attrs))el.setAttribute(key,String(value));if(text!==undefined)el.textContent=text;svg.append(el);return el};
+  const span=Math.max(1,Number(duration)||0,...timeline.map(point=>Number(point.second)||0));
+  const count=Math.min(120,Math.max(24,Math.ceil(span/2)));const buckets=Array.from({length:count},()=>({damage:0,healing:0}));
+  for(const point of timeline){const second=Math.max(0,Number(point.second)||0);const index=Math.min(count-1,Math.floor(second/span*count));buckets[index].damage+=Number(point.damage)||0;buckets[index].healing+=Number(point.healing)||0}
+  const x0=84,x1=926,topA=31,bottomA=94,topB=126,bottomB=189;
+  for(const [top,bottom] of [[topA,bottomA],[topB,bottomB]])for(const ratio of [0,.5,1]){const y=bottom-ratio*(bottom-top);add('line',{x1:x0,y1:y,x2:x1,y2:y,class:'timeline-grid'})}
+  const maxDamage=Math.max(1,...buckets.map(point=>point.damage));const maxHealing=Math.max(1,...buckets.map(point=>point.healing));
+  add('text',{x:4,y:48,class:'timeline-track-label'},'DANO');add('text',{x:4,y:63,class:'timeline-max-label'},fmt.format(maxDamage/(span/count))+'/s');
+  add('text',{x:4,y:143,class:'timeline-track-label'},'CURA');add('text',{x:4,y:158,class:'timeline-max-label'},fmt.format(maxHealing/(span/count))+'/s');
+  for(const [key,top,bottom,max,kind] of [['damage',topA,bottomA,maxDamage,'damage'],['healing',topB,bottomB,maxHealing,'healing']]){const points=buckets.map((point,index)=>{const x=x0+(x1-x0)*(index/Math.max(1,count-1));const y=bottom-(point[key]/max)*(bottom-top);return [x,y]});const d=points.map((point,index)=>(index?'L':'M')+point[0].toFixed(1)+' '+point[1].toFixed(1)).join(' ');add('path',{d,class:'timeline-line '+kind});}
+  add('text',{x:x0,y:222,'text-anchor':'start',class:'timeline-axis-label'},'0s');add('text',{x:(x0+x1)/2,y:222,'text-anchor':'middle',class:'timeline-axis-label'},Math.round(span/2)+'s');add('text',{x:x1,y:222,'text-anchor':'end',class:'timeline-axis-label'},Math.round(span)+'s');
+  card.append(svg);return card
+}
+function makeBossSegments(segments){
+  if(!Array.isArray(segments)||!segments.length)return null;
+  const section=document.createElement('section');section.className='boss-segments';
+  const title=document.createElement('h3');title.textContent='Dano por alvo de chefe';
+  const note=document.createElement('p');note.textContent='A separação usa os alvos identificados pelo jogo; fases que trocam de ator podem aparecer como alvos separados.';section.append(title,note);
+  for(const segment of segments){
+    const details=document.createElement('details');details.className='boss-segment';
+    const summary=document.createElement('summary');summary.textContent=`${segment.label} · ${fmt.format(segment.damage||0)} dano · DPS ${fmt2.format(segment.dps||0)} · ${fmt2.format(segment.duration||0)}s`;details.append(summary);
+    const table=document.createElement('table');table.className='boss-segment-table';table.innerHTML='<thead><tr><th>Jogador</th><th>Dano</th><th>DPS</th><th>Acertos</th></tr></thead>';
+    const body=document.createElement('tbody');for(const player of segment.players||[]){const row=document.createElement('tr');for(const value of [player.name,fmt.format(player.damage||0),fmt2.format(player.dps||0),fmt.format(player.hits||0)]){const cell=document.createElement('td');cell.textContent=value;row.append(cell)}body.append(row)}table.append(body);details.append(table);section.append(details)
+  }
+  return section
+}
+function makePlayerActivity(activity,duration){
+  if(!activity)return null;
+  const card=document.createElement('section');card.className='player-activity';const heading=document.createElement('div');heading.className='player-activity-title';heading.textContent='Atividade observada';card.append(heading);
+  const metrics=document.createElement('div');metrics.className='player-activity-metrics';for(const text of [`${fmt.format(activity.active_seconds||0)}s com ação`, `Maior pausa: ${fmt.format(activity.longest_pause_seconds||0)}s`, `Pico em janela de 10s: ${fmt2.format(activity.peak_damage_per_second_10s||0)} DPS`]){const item=document.createElement('span');item.textContent=text;metrics.append(item)}card.append(metrics);
+  const timeline=activity.timeline||[];if(timeline.length){const count=48,span=Math.max(1,Number(duration)||0,...timeline.map(p=>Number(p.second)||0));const bins=Array.from({length:count},()=>({damage:0,healing:0}));for(const point of timeline){const index=Math.min(count-1,Math.floor((Number(point.second)||0)/span*count));bins[index].damage+=Number(point.damage)||0;bins[index].healing+=Number(point.healing)||0}const max=Math.max(1,...bins.map(b=>b.damage));const bars=document.createElement('div');bars.className='player-activity-bars';bins.forEach((bin,index)=>{const bar=document.createElement('span');bar.className='player-activity-bar';bar.title=`${Math.round(index/count*span)}s · ${fmt.format(bin.damage)} dano · ${fmt.format(bin.healing)} cura`;const damage=document.createElement('i');damage.style.height=Math.max(1,bin.damage/max*36)+'px';const heal=document.createElement('b');heal.style.display=bin.healing?'block':'none';bar.append(damage,heal);bars.append(bar)});card.append(bars)}return card
+}
+function makeSurvivalCard(player){
+  if(player.survival_observed===undefined)return null;const seen=!!player.survival_observed;const card=document.createElement('div');card.className='survival-card';
+  if(!seen){card.textContent='Sobrevivência: nenhum impacto recebido foi identificado nesta captura.';return card}
+  card.textContent=`Sobrevivência observada · dano recebido `;const damage=document.createElement('strong');damage.textContent=fmt.format(player.damage_taken||0);card.append(damage,document.createTextNode(` · ${fmt.format(player.damage_taken_hits||0)} acertos · ${fmt.format(player.deaths||0)} KOs inferidos · ${fmt.format(player.revives||0)} retornos observados. KOs/retornos usam o HP informado nos impactos.`));return card
+}
+function makeSavedPlayerComparison(saved){
+  const section=document.createElement('section');section.className='single-player-compare';
+  const heading=document.createElement('h3');heading.textContent='Comparar jogadores';
+  const help=document.createElement('p');help.className='help';help.textContent='Compare uma métrica entre os integrantes desta luta. Marque os jogadores que quer incluir.';
+  const players=saved.ranking||[];const controls=document.createElement('div');controls.className='single-compare-controls';
+  const checks=document.createElement('div');checks.className='single-compare-players';const selected=new Set(players.map(p=>p.name));
+  for(const player of players){const label=document.createElement('label');label.className='single-compare-player';const input=document.createElement('input');input.type='checkbox';input.checked=true;input.onchange=()=>{if(input.checked)selected.add(player.name);else selected.delete(player.name);draw()};label.append(input,document.createTextNode(player.name));checks.append(label)}
+  const metricLabel=document.createElement('label');metricLabel.className='single-compare-metric';metricLabel.append(document.createTextNode('Métrica'));
+  const metric=document.createElement('select');metric.setAttribute('aria-label','Métrica para comparar');
+  const metrics=[['damage','Dano'],['dps','DPS'],['critical_rate_percent','Críticos (%)'],['healing','Cura'],['hits','Acertos']];
+  for(const [key,label] of metrics)metric.append(new Option(label,key));metricLabel.append(metric);controls.append(checks,metricLabel);
+  const chart=document.createElement('div');chart.className='single-compare-chart';
+  function draw(){chart.replaceChildren();const key=metric.value||'damage';const selectedPlayers=players.filter(p=>selected.has(p.name)).sort((a,b)=>(Number(b[key])||0)-(Number(a[key])||0));const max=Math.max(1,...selectedPlayers.map(p=>Number(p[key])||0));if(!selectedPlayers.length){const empty=document.createElement('div');empty.className='single-compare-empty';empty.textContent='Marque pelo menos um jogador.';chart.append(empty);return}for(const player of selectedPlayers){const row=document.createElement('div');row.className='single-compare-row';const name=document.createElement('span');name.className='single-compare-name';name.textContent=player.name;const track=document.createElement('div');track.className='single-compare-track';const fill=document.createElement('div');fill.className='single-compare-fill';fill.style.background=colors[Math.max(0,(player.rank||1)-1)%colors.length];fill.style.width=Math.max(0,Math.min(100,(Number(player[key])||0)*100/max))+'%';track.append(fill);const value=document.createElement('strong');value.className='single-compare-value';value.textContent=key==='critical_rate_percent'?fmt2.format(player[key]||0)+'%':key==='dps'?fmt2.format(player[key]||0):fmt.format(player[key]||0);row.append(name,track,value);chart.append(row)}}
+  metric.onchange=draw;section.append(heading,help,controls,chart);draw();return section
+}
+async function showSavedResult(id){
+  const modal=document.getElementById('resultsModal');
+  const box=document.getElementById('savedView');
+  currentSavedResult=id;
+  modal.hidden=false;document.getElementById('reportTab').hidden=false;document.getElementById('reportTabLabel').textContent='Carregando…';box.hidden=false;activateResultsTab('report');
+  box.replaceChildren();
+  box.textContent='Carregando estatísticas…';
+  try{
+    const r=await fetch('/api/saved/'+encodeURIComponent(id),{cache:'no-store'});
+    if(!r.ok)throw Error('Estatística salva não encontrada');
+    const saved=await r.json();
+    const reportTitle=`${saved.content||'Conteúdo'} · ${new Date(saved.saved_at).toLocaleString()}`;
+    document.getElementById('reportTabLabel').textContent=reportTitle;
+    document.getElementById('reportTab').title=reportTitle;
+    box.replaceChildren();
+    const summary=document.createElement('div');summary.className='report-summary';
+    const summaryItems=[
+      ['Dano',fmt.format(saved.total_damage||0)],
+      ['DPS médio',fmt2.format(saved.dps||0)],
+      ['Críticos',`${fmt.format(saved.critical_hits||0)} (${fmt2.format(saved.critical_rate_percent||0)}%)`],
+      ['Acertos',fmt.format(saved.total_hits||0)],
+      ['Duração',fmt2.format(saved.duration||0)+'s']
+    ];
+    if(saved.total_healing)summaryItems.splice(2,0,['Cura',fmt.format(saved.total_healing),'healing']);
+    if(saved.total_damage_taken)summaryItems.push(['Dano recebido',fmt.format(saved.total_damage_taken)]);
+    if(saved.total_deaths_inferred)summaryItems.push(['KOs inferidos',fmt.format(saved.total_deaths_inferred)]);
+    for(const [label,value,kind] of summaryItems){const item=document.createElement('span');if(kind)item.className=kind;item.textContent=label+': ';const strong=document.createElement('strong');strong.textContent=value;item.append(strong);summary.append(item)}
+    box.append(summary);
+    if(saved.party_coverage){const quality=document.createElement('div');quality.className='report-capture-quality';const coverage=saved.party_coverage;quality.textContent=coverage.roster_confirmed?`Party identificada: ${coverage.roster_count} jogadores · com eventos de dano/cura: ${coverage.players_with_events}/${coverage.roster_count} · atores observados: ${coverage.actors_observed||0}`:'Party não confirmada pelo jogo nesta captura.';box.append(quality)}
+    box.append(makeTimelineChart(saved.timeline,saved.duration));
+    const bossSegments=makeBossSegments(saved.boss_segments);if(bossSegments)box.append(bossSegments);
+    box.append(makeSavedPlayerComparison(saved));
+    const wrap=document.createElement('div');wrap.className='result-table-wrap';
+    const table=document.createElement('table');table.className='result-table';
+    const thead=document.createElement('thead');thead.innerHTML='<tr><th>Jogador</th><th>Dano</th><th>Cura</th><th>DPS</th><th>Críticos</th><th>Acertos</th></tr>';
+    table.append(thead);
+    const body=document.createElement('tbody');
+    const ranking=saved.ranking||[];
+    const maxDamage=Math.max(1,...ranking.map(player=>player.damage||0));
+    const maxHealing=Math.max(1,...ranking.map(player=>player.healing||0));
+    const makeBarCell=(value,max,kind,color)=>{
+      const cell=document.createElement('td');cell.className=kind==='healing'?'report-healing':'report-damage';
+      const amount=document.createElement('span');amount.className='report-value';amount.textContent=fmt.format(value||0);
+      const track=document.createElement('div');track.className='report-bar';
+      const fill=document.createElement('div');fill.className='report-bar-fill'+(kind==='healing'?' healing':'');
+      if(kind!=='healing')fill.style.background=color||colors[0];
+      fill.style.width=Math.max(0,Math.min(100,(value||0)*100/max))+'%';track.append(fill);cell.append(amount,track);return cell;
+    };
+    const addSkillGroups=(host,skills,kind)=>{
+      const amountKey=kind==='healing'?'healing':'damage';
+      const groups=groupSkillsByCharacter(skills,amountKey);
+      if(!groups.length)return false;
+      const heading=document.createElement('h4');heading.textContent=kind==='healing'?'Cura por personagem':'Dano por personagem';host.append(heading);
+      for(const group of groups){
+        const section=document.createElement('details');section.className='saved-character';
+        const label=document.createElement('summary');const title=document.createElement('span');title.className='character-group-title';const icon=createCharacterIcon(group.name);const text=document.createElement('span');text.className='character-group-label';text.textContent=`${group.name} · ${fmt.format(group.total)} · ${group.skills.length} habilidades`;title.append(icon,text);label.append(title);section.append(label);
+        for(const skill of group.skills){
+          const line=document.createElement('div');line.className='skill-row';line.title=skill.skill_id||'';
+          const main=document.createElement('span');main.className='skill-main';const name=document.createElement('span');name.className='skill-name';name.textContent=formatSkillName(skill.skill_id);const iconUrl=skillIconUrl(skill.skill_id);if(iconUrl){const skillIcon=document.createElement('img');skillIcon.className='skill-icon';skillIcon.src=iconUrl;skillIcon.alt='';skillIcon.loading='lazy';skillIcon.onerror=()=>skillIcon.remove();main.append(skillIcon)}main.append(name);
+          const amount=document.createElement('strong');amount.className='skill-damage';amount.textContent=fmt.format(skill[amountKey]||0);
+          const meta=document.createElement('small');meta.className='skill-meta';
+          meta.textContent=`${fmt2.format(skill.share_percent||0)}% · ${fmt.format(skill.hits||0)} ${kind==='healing'?'eventos':'acertos'}${kind==='damage'?` · ${fmt.format(skill.critical_hits||0)} críticos`:''}`;
+          line.append(main,amount,meta);section.append(line);
+        }
+        host.append(section);
+      }
+      return true;
+    };
+    for(let index=0;index<ranking.length;index++){
+      const player=ranking[index];
+      const row=document.createElement('tr');
+      const nameCell=document.createElement('td');nameCell.className='player-name-cell';
+      const name=document.createElement('button');name.className='result-player-button';name.textContent=`${player.rank||index+1}. ${player.name}`;name.setAttribute('aria-expanded','false');nameCell.append(name);
+      row.append(nameCell,makeBarCell(player.damage,maxDamage,'damage',colors[index%colors.length]));
+      const dps=document.createElement('td');dps.textContent=fmt2.format(player.dps||0);row.append(dps);
+      const critical=document.createElement('td');critical.textContent=`${fmt2.format(player.critical_rate_percent||0)}%`;const criticalCount=document.createElement('small');criticalCount.className='report-metric-sub';criticalCount.textContent=fmt.format(player.critical_hits||0);critical.append(criticalCount);row.append(critical);
+      row.append(makeBarCell(player.healing,maxHealing,'healing'));
+      const hits=document.createElement('td');hits.textContent=fmt.format(player.hits||0);row.append(hits);
+      const expandRow=document.createElement('tr');expandRow.className='result-expand-row';expandRow.hidden=true;
+      const expandCell=document.createElement('td');expandCell.colSpan=6;
+      const panel=document.createElement('div');panel.className='player-skills-panel';
+      const activityCard=makePlayerActivity(player.activity,saved.duration);if(activityCard)panel.append(activityCard);
+      const survivalCard=makeSurvivalCard(player);if(survivalCard)panel.append(survivalCard);
+      const hasDamage=addSkillGroups(panel,player.skills,'damage');
+      const hasHealing=addSkillGroups(panel,player.healing_skills,'healing');
+      if(!hasDamage&&!hasHealing){const note=document.createElement('p');note.className='report-note';note.textContent='Este resultado não tem detalhes de habilidades para este jogador.';panel.append(note)}
+      expandCell.append(panel);expandRow.append(expandCell);
+      name.onclick=()=>{expandRow.hidden=!expandRow.hidden;name.setAttribute('aria-expanded',String(!expandRow.hidden))};
+      body.append(row,expandRow);
+    }
+    if(!ranking.length){const row=document.createElement('tr');const cell=document.createElement('td');cell.colSpan=6;cell.textContent='Este resultado não contém jogadores.';row.append(cell);body.append(row)}
+    table.append(body);wrap.append(table);box.append(wrap);
+  }catch(e){box.replaceChildren();box.textContent=e.message;document.getElementById('reportTabLabel').textContent='Erro ao abrir'}
+}
+async function quitMeter(){try{await fetch('/api/quit',{method:'POST',headers:{'Content-Type':'application/json','X-DPS-Token':token},body:'{}'});const s=document.getElementById('status');s.textContent='Programa encerrado. Pode fechar esta janela.';document.getElementById('capturebadge').textContent='ENCERRADO';document.getElementById('capturebadge').className='badge off';document.getElementById('start').disabled=true;document.getElementById('stop').disabled=true}catch(e){const s=document.getElementById('status');s.textContent=e.message;s.className='status error'}}
+function render(s){
+  const badge=document.getElementById('capturebadge');badge.textContent=s.running?'CAPTURANDO':'PARADO';badge.className='badge'+(s.running?'':' off');
+  const autoSave=document.getElementById('autoSaveResults');if(document.activeElement!==autoSave)autoSave.checked=!!s.auto_save_enabled;
+  overlayVisible=!!s.overlay_visible;overlayAutoEnabled=!!s.overlay_auto_enabled;overlayManualHidden=!!s.overlay_manual_hidden;overlayManualEnabled=!!s.overlay_manual_enabled;overlayClickthrough=!!s.overlay_clickthrough;
+  const opacity=Math.round((s.overlay_opacity??0.9)*100);const opacitySlider=document.getElementById('overlayOpacity');if(document.activeElement!==opacitySlider)opacitySlider.value=opacity;document.getElementById('overlayOpacityValue').textContent=opacity+'%';
+  document.getElementById('overlayToggle').textContent=overlayAutoEnabled?'Desativar sobreposição automática':'Ativar sobreposição no jogo';
+  const overlayManual=document.getElementById('overlayManualToggle');overlayManual.disabled=false;overlayManual.textContent=overlayAutoEnabled?(overlayManualHidden?'Reativar sobreposição':'Ocultar sobreposição agora'):(overlayManualEnabled?'Desativar sobreposição manual':'Ativar sobreposição manual');overlayManual.title=overlayAutoEnabled?(overlayManualHidden?'A sobreposição voltará quando o jogo estiver em primeiro plano.':'Oculta até você reativá-la manualmente.'):(overlayManualEnabled?'Desativa a exibição manual; continua restrita ao jogo em primeiro plano.':'Ativa a sobreposição manualmente, mantendo-a restrita ao jogo em primeiro plano.');
+  const overlayClicks=document.getElementById('overlayClicks');overlayClicks.disabled=!overlayVisible;overlayClicks.dataset.passThrough=String(overlayClickthrough);overlayClicks.innerHTML=overlayClickthrough?overlayLockIcons.unlocked:overlayLockIcons.locked;overlayClicks.title=overlayClickthrough?'Voltar a interagir com a sobreposição (Ctrl+Shift+F10)':'Ativar clique pass-through';overlayClicks.setAttribute('aria-label',overlayClicks.title);
+  document.getElementById('start').disabled=s.running;document.getElementById('stop').disabled=!s.running;
+  document.getElementById('damage').textContent=fmt.format(s.damage||0);
+  document.getElementById('groupDps').textContent=fmt2.format(s.dps||0);
+  document.getElementById('duration').textContent=Math.round(s.duration||0)+'s';
+  document.getElementById('raidstate').textContent=s.dungeon_is_raid?'Raid · tentativa atual':s.running?'Capturando automaticamente':'Aguardando conteúdo';
+  if(s.last_saved_result&&s.last_saved_result!==lastSavedSeen){lastSavedSeen=s.last_saved_result;loadSavedResults()}
+  const rows=document.getElementById('rows');rows.replaceChildren();const ranking=s.ranking||[];
+  const selfName=(s.self_player_name&&ranking.some(p=>p.name===s.self_player_name))?s.self_player_name:(ranking.length===1?ranking[0].name:'');
+  const self=ranking.find(p=>p.name===selfName);document.getElementById('personal-dps').textContent=self?fmt.format(self.dps):'—';
+  if(!ranking.length){const empty=document.createElement('div');empty.className='empty';empty.textContent=s.running?'Aguardando dano ou cura do grupo…':'A captura começará automaticamente quando o jogo for detectado.';rows.append(empty)}
+  const maxDamage=Math.max(1,...ranking.map(p=>p.damage||0));
+  const maxHealing=Math.max(0,...ranking.map(p=>p.heal||0));
+  document.getElementById('healingTotal').textContent=fmt.format(s.heal||0);
+  document.getElementById('healingEvents').textContent=fmt.format(ranking.reduce((sum,p)=>sum+(Number(p.heal_hits)||0),0))+' eventos de cura';
+  const topDamage=ranking[0];const topDps=[...ranking].sort((a,b)=>(Number(b.dps)||0)-(Number(a.dps)||0))[0];
+  document.getElementById('highlightDamage').textContent=topDamage?`${topDamage.name} · ${fmt.format(topDamage.damage||0)}`:'—';
+  document.getElementById('highlightDps').textContent=topDps?`${topDps.name} · ${fmt2.format(topDps.dps||0)}`:'—';
+  document.getElementById('highlightCrit').textContent=(Number(s.hits)||0)?fmt2.format((Number(s.critical)||0)*100/(Number(s.hits)||1))+'%':'—';
+  updateLivePace(s);
+  document.getElementById('saveResult').disabled=(s.damage||0)<=0&&(s.heal||0)<=0;
+  for(let i=0;i<ranking.length;i++){
+    const p=ranking[i],item=document.createElement('div');item.className='player';
+    const head=document.createElement('div');head.className='player-head';const name=document.createElement('span');name.className='player-name';name.textContent=p.name===selfName?'Você':`${i+1}. ${p.name}`;const damage=document.createElement('span');damage.className='player-damage';damage.textContent=fmt.format(p.damage||0);head.append(name,damage);
+    const bar=document.createElement('div');bar.className='bar';const fill=document.createElement('div');fill.className='bar-fill';fill.style.width=Math.max(0,Math.min(100,(p.damage||0)*100/maxDamage))+'%';fill.style.background=colors[i%colors.length];bar.append(fill);item.append(head,bar);if(maxHealing>0){const healRow=document.createElement('div');healRow.className='heal-row';const healBar=document.createElement('div');healBar.className='heal-bar';healBar.title='Cura: '+fmt.format(p.heal||0);const healFill=document.createElement('div');healFill.className='heal-fill';healFill.style.width=Math.max(0,Math.min(100,(p.heal||0)*100/maxHealing))+'%';healBar.append(healFill);const healValue=document.createElement('span');healValue.className='heal-value';healValue.textContent=fmt.format(p.heal||0)+' cura';healRow.append(healBar,healValue);item.append(healRow)}rows.append(item)
+  }
+  const status=document.getElementById('status');status.textContent=s.error||s.status||'';status.className='status'+(s.error?' error':'');
+}
+async function update(){try{const r=await fetch('/api/state',{cache:'no-store'});if(!r.ok)throw Error('Servidor indisponível');render(await r.json())}catch(e){const status=document.getElementById('status');status.textContent='Sem conexão com o medidor. '+e.message;status.className='status error'}}
+async function enableOverlayOnStartup(){try{const r=await fetch('/api/overlay/open',{method:'POST',headers:{'Content-Type':'application/json','X-DPS-Token':token},body:'{}'});if(!r.ok)throw Error('Não foi possível ativar a sobreposição automática');await update()}catch(e){const status=document.getElementById('status');status.textContent=e.message;status.className='status error'}}
+enableOverlayOnStartup();loadSavedResults();setInterval(update,500);
+</script>
+</body>
+</html>
+

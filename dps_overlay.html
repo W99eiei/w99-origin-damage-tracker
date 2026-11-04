@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>W99 Origin Damage Tracker — Sobreposição</title>
+<style>
+:root{color-scheme:dark;font-family:Segoe UI,Arial,sans-serif;color:#f3f4f6;font-synthesis:none}
+*{box-sizing:border-box}
+html,body{width:100%;height:100%;min-height:0;margin:0;background:#0f1724;overflow:hidden;scrollbar-width:none}
+*::-webkit-scrollbar{display:none;width:0;height:0}
+body{padding:0}
+.meter{width:100%;height:100vh;min-height:100vh;overflow:hidden;padding:10px 11px 11px;border:1px solid #35445a;border-radius:14px;background:#0f1724;box-shadow:inset 0 1px 0 #ffffff0a}
+.meter-content{width:100%;height:auto}
+.top{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.drag{display:flex;align-items:center;gap:7px;flex:1;min-width:0;cursor:move}
+.top{cursor:move;user-select:none;-webkit-user-select:none}
+.top button{cursor:pointer}
+.mark{color:#f2bc05;font-size:15px;font-weight:900}
+.title{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;font-weight:800;letter-spacing:.3px}
+.state{flex:0 0 auto;padding:3px 7px;border-radius:10px;background:#17372f;color:#48d7a1;font-size:9px;font-weight:750}
+.state.off{background:#3b2530;color:#ff8caf}
+.close{width:22px;height:22px;padding:0;border:1px solid #39475b;border-radius:5px;background:#1d2939;color:#dbe4f0;font-size:15px;line-height:18px}
+.lock{display:grid;width:24px;height:24px;flex:0 0 24px;place-items:center;padding:4px;border:1px solid #3c4e66;border-radius:7px;background:#1b2a3e;color:#dbe4f0;cursor:pointer}
+.lock svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.lock[data-pass-through="true"]{border-color:#d0a92c;background:#392f18;color:#f6d265}
+.lock:focus-visible{outline:2px solid #71d6e4;outline-offset:2px}
+.summary{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;color:#9eacbf;font-size:9px;letter-spacing:.25px}
+.metric-toggle{margin:0;padding:4px 7px;border:1px solid #3d4c63;border-radius:7px;background:#1a2638;color:#e8edf7;font-size:9px;font-weight:750;letter-spacing:.3px;cursor:pointer}
+.summary strong{display:block;margin-top:2px;color:#f3f4f6;font-size:16px;font-variant-numeric:tabular-nums}
+.rows{display:flex;flex-direction:column;gap:7px}
+.empty{padding:15px 4px;text-align:center;color:#9eacbf;font-size:11px}
+.player{padding-bottom:5px;border-bottom:1px solid #29364a}
+.head{display:flex;justify-content:space-between;gap:8px;margin-bottom:4px;font-size:11px;font-weight:700}
+.name{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.amount{flex:0 0 auto;font-variant-numeric:tabular-nums}
+.bar{height:7px;overflow:hidden;border-radius:99px;background:#374151}
+.fill{height:100%;min-width:0;border-radius:99px;transition:width .25s ease}
+.heal{height:2px;margin-top:3px;overflow:hidden;border-radius:99px;background:#263142}
+.heal-fill{height:100%;background:#2dcc9a}
+.footer{display:flex;justify-content:space-between;gap:8px;margin-top:8px;padding-top:7px;border-top:1px solid #344054;color:#aeb9c9;font-size:10px}
+.footer strong{color:#e5e7eb;font-variant-numeric:tabular-nums}
+:root{--line:#314159;--text:#edf3fb;--muted:#9aaac0;--gold:#f2bf24;--blue:#62a9ff;--green:#39d9a2}
+.meter{padding:11px 12px 12px;border-color:#3a4d66;border-radius:16px;background:linear-gradient(155deg,#121e2eF2,#0d1725F2);box-shadow:inset 0 1px #ffffff0b,0 12px 28px #02061755}
+.top{gap:9px;margin-bottom:9px;padding-bottom:7px;border-bottom:1px solid #ffffff0b}
+.drag{gap:8px}
+.mark{display:grid;width:22px;height:22px;flex:0 0 22px;place-items:center;border:1px solid #d8aa2738;border-radius:7px;background:#f2bf2412;color:var(--gold)}
+.mark svg{width:14px;height:14px;fill:currentColor}
+.title{font-size:11px;letter-spacing:.35px}
+.state{padding:4px 8px;border:1px solid #39d9a22b;border-radius:99px;background:#12372f;color:#5de1b0;font-size:9px;letter-spacing:.3px}
+.state.off{border-color:#ff7c962c;background:#3b2530;color:#ff9db2}
+.close{width:24px;height:24px;border-color:#3c4e66;border-radius:7px;background:#1b2a3e}
+.summary{margin-bottom:9px;color:var(--muted);font-size:9px;letter-spacing:.6px}
+.summary strong{font-size:17px}
+.rows{gap:7px}
+.player{padding:7px 8px 6px;border:1px solid #2a3a50;border-radius:9px;background:linear-gradient(110deg,#172438d9,#141f30d9)}
+.head{margin-bottom:5px;color:var(--text);font-size:11px}
+.amount{font-weight:750}
+.bar{height:8px;background:#354359}
+.heal{height:3px}
+.footer{margin-top:9px;padding-top:8px;border-color:var(--line);color:#aebbd0}
+.footer strong{color:var(--text)}
+.empty{padding:17px 6px;border:1px dashed #35445a;border-radius:10px;background:#111c2b55;color:#a1b0c4}
+/* Alternate violet + cyan colorway */
+:root{--line:#403b59;--text:#f3f0fb;--muted:#aca8c2;--gold:#b9a0ff;--blue:#71d6e4;--green:#45d8ae}
+html,body{background:#0c0b16}
+.meter{border-color:#47425f;background:linear-gradient(155deg,#19172bf2,#121220f2)}
+.top{border-bottom-color:#ffffff0d}
+.mark{border-color:#b9a0ff55;background:#b9a0ff19}
+.player{border-color:#36344e;background:linear-gradient(110deg,#1c1b30e8,#171625e8)}
+.bar{background:#3a394f}
+.heal{background:#303047}
+.footer{border-top-color:#403b59}
+</style>
+</head>
+<body>
+<main class="meter">
+  <div class="meter-content">
+  <div class="top">
+    <div class="drag" title="Arraste para mover a sobreposição"><span class="mark" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="13" width="4" height="8" rx="1"/><rect x="10" y="8" width="4" height="13" rx="1"/><rect x="17" y="3" width="4" height="18" rx="1"/></svg></span><span class="title">W99 ORIGIN DAMAGE TRACKER</span></div>
+    <span id="state" class="state">CONECTANDO</span>
+    <button id="overlayLock" class="lock" type="button" title="Ativar clique pass-through" aria-label="Ativar clique pass-through" onclick="toggleClickthrough()"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg></button>
+    <button class="close" title="Fechar sobreposição" aria-label="Fechar" onclick="closeOverlay()">×</button>
+  </div>
+  <div class="summary"><span><button id="metricToggle" class="metric-toggle" type="button" title="Alternar entre dano, DPS e cura" onclick="cycleMetric()">DANO</button><span id="metricScope"> DO GRUPO</span></span><span style="text-align:right"><span id="totalLabel">DANO TOTAL</span><strong id="total">0</strong></span></div>
+  <section id="rows" class="rows"><div class="empty">Conectando ao DPS Meter…</div></section>
+  <div class="footer"><span><span id="personalLabel">DPS pessoal</span> <strong id="personal">—</strong></span><span>Tempo <strong id="duration">0s</strong></span></div>
+  </div>
+</main>
+<script>
+const token='__TOKEN__';
+const fmt=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:0});
+const colors=['#f2bc05','#5aa6ff','#2dcc9a','#ed70b5','#a58bff'];
+const lockIcons={locked:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>',unlocked:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 7.8-1"></path></svg>'};
+let overlayClickthrough=false;
+let lastRequestedHeight=0,resizePending=false;
+const metricModes=['damage','dps','heal'];let metricMode=localStorage.getItem('7ds_overlay_metric');if(!metricModes.includes(metricMode))metricMode='damage';
+function cycleMetric(){metricMode=metricModes[(metricModes.indexOf(metricMode)+1)%metricModes.length];localStorage.setItem('7ds_overlay_metric',metricMode);update()}
+async function toggleClickthrough(){try{const response=await fetch('/api/overlay/clickthrough',{method:'POST',headers:{'Content-Type':'application/json','X-DPS-Token':token},body:JSON.stringify({enabled:!overlayClickthrough})});const data=await response.json();if(!response.ok)throw Error(data.error||'Não foi possível alterar o cadeado');overlayClickthrough=!overlayClickthrough;renderLock()}catch(error){document.getElementById('overlayLock').title=error.message}}
+function renderLock(){const button=document.getElementById('overlayLock');button.dataset.passThrough=String(overlayClickthrough);button.innerHTML=overlayClickthrough?lockIcons.unlocked:lockIcons.locked;button.title=overlayClickthrough?'Passe o cursor sobre o cadeado e clique para desbloquear, ou pressione Ctrl+Shift+F10.':'Ativar clique pass-through para interagir com o jogo';button.setAttribute('aria-label',button.title)}
+document.querySelector('.top').addEventListener('pointerdown',event=>{if(event.button!==0||event.target.closest('button'))return;event.preventDefault();fetch('/api/overlay/drag',{method:'POST',headers:{'Content-Type':'application/json','X-DPS-Token':token},body:'{}'}).then(async response=>{if(!response.ok){const data=await response.json();throw Error(data.error||'Não foi possível mover a sobreposição')}}).catch(error=>{const state=document.getElementById('state');state.title=error.message})});
+function fitWindow(){
+  const content=document.querySelector('.meter-content');
+  const height=Math.max(150,Math.min(450,Math.ceil(content.scrollHeight+24)));
+  if(resizePending||Math.abs(height-lastRequestedHeight)<8)return;
+  resizePending=true;
+  fetch('/api/overlay/resize',{method:'POST',headers:{'Content-Type':'application/json','X-DPS-Token':token},body:JSON.stringify({height})})
+    .then(response=>{if(response.ok)lastRequestedHeight=height})
+    .catch(()=>{})
+    .finally(()=>{resizePending=false});
+}
+function render(s){
+  overlayClickthrough=!!s.overlay_clickthrough;renderLock();
+  const status=document.getElementById('state');
+  status.textContent=s.running?'CAPTURANDO':'PARADO';
+  status.className='state'+(s.running?'':' off');
+  const metricLabels={damage:['DANO','DANO TOTAL','DPS pessoal'],dps:['DPS','DPS MÉDIO','DPS pessoal'],heal:['CURA','CURA TOTAL','Cura pessoal']};const [modeLabel,totalLabel,personalLabel]=metricLabels[metricMode];document.getElementById('metricToggle').textContent=modeLabel;document.getElementById('totalLabel').textContent=totalLabel;document.getElementById('personalLabel').textContent=personalLabel;const hasCombat=(Number(s.damage)||0)>0||(Number(s.duration)||0)>0;const displayedHealing=hasCombat?(Number(s.heal)||0):0;document.getElementById('total').textContent=metricMode==='dps'?new Intl.NumberFormat('pt-BR',{maximumFractionDigits:1}).format(s.dps||0):fmt.format(metricMode==='heal'?displayedHealing:s.damage||0);
+  document.getElementById('duration').textContent=Math.round(s.duration||0)+'s';
+  const players=(s.ranking||[]).filter(p=>(Number(p.damage)||0)>0||(hasCombat&&(Number(p.heal)||0)>0));
+  const selfName=(s.self_player_name&&players.some(p=>p.name===s.self_player_name))?s.self_player_name:(players.length===1?players[0].name:'');
+  const self=players.find(p=>p.name===selfName);
+  document.getElementById('personal').textContent=self?(metricMode==='dps'?new Intl.NumberFormat('pt-BR',{maximumFractionDigits:1}).format(self.dps||0):fmt.format(metricMode==='heal'?self.heal||0:self.damage||0)):'—';
+  const host=document.getElementById('rows');host.replaceChildren();
+  if(!players.length){const empty=document.createElement('div');empty.className='empty';empty.textContent=s.running?'Aguardando dano do grupo…':'A captura começará quando o jogo for detectado.';host.append(empty);return}
+  const valueOf=p=>Number(p[metricMode]||0);const max=Math.max(1,...players.map(valueOf));
+  const maxHeal=Math.max(0,...players.map(p=>p.heal||0));
+  for(let i=0;i<players.length;i++){
+    const p=players[i],row=document.createElement('div');row.className='player';
+    const head=document.createElement('div');head.className='head';
+    const name=document.createElement('span');name.className='name';name.textContent=p.name===selfName?'Você':`${i+1}. ${p.name}`;
+    const amount=document.createElement('span');amount.className='amount';amount.textContent=metricMode==='dps'?new Intl.NumberFormat('pt-BR',{maximumFractionDigits:1}).format(valueOf(p)):fmt.format(valueOf(p));head.append(name,amount);
+    const bar=document.createElement('div');bar.className='bar';
+    const fill=document.createElement('div');fill.className='fill';fill.style.width=Math.max(0,Math.min(100,valueOf(p)*100/max))+'%';fill.style.background=metricMode==='heal'?'#39d9a2':colors[i%colors.length];bar.append(fill);row.append(head,bar);
+    if(metricMode!=='heal'&&maxHeal>0){const heal=document.createElement('div');heal.className='heal';heal.title='Cura: '+fmt.format(p.heal||0);const healFill=document.createElement('div');healFill.className='heal-fill';healFill.style.width=Math.max(0,Math.min(100,(p.heal||0)*100/maxHeal))+'%';heal.append(healFill);row.append(heal)}
+    host.append(row);
+  }
+}
+async function update(){try{const response=await fetch('/api/state',{cache:'no-store'});if(!response.ok)throw Error();render(await response.json());requestAnimationFrame(fitWindow)}catch{document.getElementById('state').textContent='SEM CONEXÃO';document.getElementById('state').className='state off'}}
+async function closeOverlay(){try{await fetch('/api/overlay/close',{method:'POST',headers:{'Content-Type':'application/json','X-DPS-Token':token},body:'{}'})}catch{}}
+update();setInterval(update,500);
+</script>
+</body>
+</html>
+

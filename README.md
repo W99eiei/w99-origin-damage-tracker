@@ -25,7 +25,7 @@ Com as dependências instaladas, execute `./build_windows.ps1` no PowerShell. O 
 
 ## Dados e arquivos excluídos
 
-Este repositório não contém capturas PCAP/ETL, sessões de jogo, UIDs/nicks locais, relatórios, executáveis do jogo, dumps de memória, ferramentas de inspeção de memória ou dependências binárias vendorizadas. Os retratos de personagens de terceiros também foram omitidos; a interface usa iniciais quando essas imagens não estão disponíveis.
+Este repositório não contém capturas PCAP/ETL, sessões de jogo, UIDs/nicks locais, relatórios, executáveis do jogo, dumps de memória, ferramentas de inspeção de memória ou dependências binárias vendorizadas. Os retratos de personagens de terceiros e o ícone do aplicativo foram omitidos; a interface usa iniciais quando as imagens não estão disponíveis e o executável usa o ícone padrão do PyInstaller.
 
 `analise_engine/protocol_table.bin` e `protocolos_ids.json` são os dados mínimos necessários para decodificar os eventos suportados pela versão de protocolo analisada. Uma atualização do jogo pode alterar o protocolo e exigir nova validação.
 
