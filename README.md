@@ -33,8 +33,6 @@ Este repositório não contém capturas PCAP/ETL, sessões de jogo, UIDs/nicks l
 
 Este é um projeto independente e não aprovado pela Netmarble. O uso de software de terceiros e captura de tráfego pode estar sujeito às regras do jogo e ser sinalizado pelo anticheat. Os termos não avaliam especificamente este aplicativo; não há garantia contra alertas, restrições ou banimento. Leia os termos vigentes antes de usar: <https://help.netmarble.com/en/terms/terms_of_service_pc_en>.
 
-O resultado é estimado a partir dos eventos observados e pode ficar incompleto ou atribuir dano de forma imprecisa. Os relatórios podem conter dados dos integrantes do grupo; revise-os antes de compartilhar.
-
 ## Licença
 
 Nenhuma licença de código aberto foi escolhida para este repositório. Até que uma licença seja adicionada, todos os direitos permanecem reservados.
