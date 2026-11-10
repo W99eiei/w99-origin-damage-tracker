@@ -12,6 +12,7 @@ import time
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import sys
+import webbrowser
 import capturar_npcap
 from decodificar_impactos import load_table
 from equipment_profiles import (decode_other_player_profile,
@@ -20,11 +21,60 @@ from equipment_profiles import (decode_other_player_profile,
 from meter_live import (IDLE_RESET_SECONDS, RAID_MODE_PROTOCOL_NAMES, Meter, MultiPipeline,
                         decode_buff_impact)
 from app_paths import APP_DIR, RESOURCE_DIR
+from urllib.request import Request, urlopen
 
 ROOT = APP_DIR
 ASSETS = RESOURCE_DIR
 SHARE_BUILD = (ASSETS/'distribution_build.json').is_file()
 POST_CONTENT_GRACE_SECONDS = 20
+GITHUB_RELEASE_API = 'https://api.github.com/repos/W99eiei/w99-origin-damage-tracker/releases/latest'
+GITHUB_RELEASES_PAGE = 'https://github.com/W99eiei/w99-origin-damage-tracker/releases'
+
+
+def _build_version():
+    try:
+        metadata = json.loads((ASSETS/'distribution_build.json').read_text(encoding='utf-8'))
+        return str(metadata.get('version') or '1.0.0'), str(metadata.get('display_version') or '1.0')
+    except (OSError, ValueError, TypeError, AttributeError):
+        return '1.0.0', '1.0'
+
+
+APP_VERSION, APP_VERSION_DISPLAY = _build_version()
+
+
+def _version_parts(value):
+    return tuple(int(part) for part in re.findall(r'\d+', str(value)))
+
+
+def _is_newer_version(candidate, current):
+    candidate_parts = _version_parts(candidate)
+    current_parts = _version_parts(current)
+    if not candidate_parts:
+        return False
+    width = max(len(candidate_parts), len(current_parts))
+    return candidate_parts + (0,) * (width - len(candidate_parts)) > current_parts + (0,) * (width - len(current_parts))
+
+
+def _check_github_release():
+    request = Request(GITHUB_RELEASE_API, headers={
+        'Accept': 'application/vnd.github+json',
+        'User-Agent': f'W99-Origin-Damage-Tracker/{APP_VERSION_DISPLAY}',
+        'X-GitHub-Api-Version': '2022-11-28',
+    })
+    with urlopen(request, timeout=4) as response:
+        release = json.loads(response.read(1024 * 1024).decode('utf-8'))
+    tag = str(release.get('tag_name') or '')
+    url = str(release.get('html_url') or '')
+    if (not _is_newer_version(tag, APP_VERSION) or
+            not url.startswith(GITHUB_RELEASES_PAGE)):
+        return None
+    return {
+        'available': True,
+        'current_version': APP_VERSION_DISPLAY,
+        'latest_version': tag.lstrip('vV'),
+        'url': url,
+        'notes': str(release.get('body') or '')[:1200],
+    }
 
 
 class App:
@@ -152,6 +202,13 @@ class App:
                             self.dungeon_ended_at is not None and
                             timestamp < self.dungeon_ended_at + POST_CONTENT_GRACE_SECONDS
                         )
+                        # Keep the raid totals intact during the post-content
+                        # grace period. A late heal/impact must not trigger
+                        # Meter.event()'s deferred reset before the result is
+                        # saved.
+                        if grace_active and self.meter.reset_after_raid:
+                            self.meter.reset_after_raid = False
+                            self.meter.raid_exit_at = None
                         if (has_damage and self.dungeon_state == 'ended' and
                                 not self.raid_marker_seen and not grace_active):
                             self._auto_save_pending_result(timestamp)
@@ -1146,6 +1203,9 @@ def _apply_overlay_round_region(window, wait=True):
 def server(port=8765, auto_start=False, app_window=False):
     app = App()
     token = secrets.token_urlsafe(32)
+    update_lock = threading.Lock()
+    update_notice = {'available': False, 'current_version': APP_VERSION_DISPLAY,
+                     'checked': False}
     native_window = {'window': None}
     overlay_state = {'window': None, 'visible': False, 'clickthrough': False,
                      'hover_unlocked': False, 'auto_content_visibility': False,
@@ -1154,6 +1214,18 @@ def server(port=8765, auto_start=False, app_window=False):
                      'opacity': 0.90}
     overlay_lock = threading.RLock()
     server_thread = None
+
+    def check_for_updates():
+        try:
+            latest = _check_github_release()
+            with update_lock:
+                if latest:
+                    update_notice.update(latest)
+                update_notice['checked'] = True
+        except Exception:
+            # Update checks are best-effort and must never interfere with capture.
+            with update_lock:
+                update_notice['checked'] = True
 
     def sync_overlay_game_visibility():
         """Keep the overlay visible only while the game's own window is foreground."""
@@ -1382,6 +1454,8 @@ def server(port=8765, auto_start=False, app_window=False):
                 self.reply(image, mime=mime)
             elif self.path == '/api/state':
                 state = app.snapshot()
+                with update_lock:
+                    state['update_notice'] = dict(update_notice)
                 sync_overlay_game_visibility()
                 with overlay_lock:
                     state['overlay_visible'] = overlay_state['visible']
@@ -1410,6 +1484,14 @@ def server(port=8765, auto_start=False, app_window=False):
                 if not 0 <= size <= 4096:
                     raise ValueError('Requisição muito grande')
                 data = json.loads(self.rfile.read(size) or b'{}')
+                if self.path == '/api/update/open':
+                    with update_lock:
+                        release_url = update_notice.get('url')
+                    if not release_url or not release_url.startswith(GITHUB_RELEASES_PAGE + '/'):
+                        raise ValueError('Não há uma página de atualização disponível.')
+                    webbrowser.open(release_url)
+                    self.reply(json.dumps({'ok': True}))
+                    return
                 if self.path == '/api/overlay/drag':
                     with overlay_lock:
                         overlay = overlay_state['window']
@@ -1620,6 +1702,7 @@ def server(port=8765, auto_start=False, app_window=False):
                 self.reply(json.dumps({'error': str(exc)}), 400)
     http = ThreadingHTTPServer(('127.0.0.1', port), Handler)
     http.daemon_threads = True
+    threading.Thread(target=check_for_updates, name='github-release-check', daemon=True).start()
     if auto_start:
         app.start()
     try:
@@ -1653,4 +1736,3 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port', type=int, default=8765)
     server(parser.parse_args().port)
-
