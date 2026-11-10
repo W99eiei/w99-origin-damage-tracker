@@ -536,6 +536,15 @@ main.panel>footer{align-items:center;margin-top:13px;padding:10px 0;border-top:1
 #rows .empty{width:100%;align-self:stretch}
 @media(max-width:980px){.dashboard-content{grid-template-columns:minmax(0,1.3fr) minmax(275px,.9fr)}}
 @media(max-width:760px){.dashboard-content{grid-template-columns:minmax(0,1fr)}.ranking-panel{min-height:0}}
+.update-notice{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:18px;background:#050812b8;backdrop-filter:blur(4px)}
+.update-notice[hidden]{display:none}
+.update-card{width:min(460px,100%);padding:22px;border:1px solid #c2a95a77;border-radius:16px;background:linear-gradient(145deg,#1b2637,#19172a 72%);box-shadow:0 24px 80px #0009;color:#e8edf5}
+.update-card h2{margin:0 0 8px;color:#f2d887;font-size:19px}
+.update-card p{margin:8px 0;color:#b8c4d5;font-size:13px;line-height:1.55}
+.update-version{color:#71d6e4!important;font-weight:700}
+.update-notes{max-height:180px;overflow:auto;margin:12px 0;padding:10px;border:1px solid #344054;border-radius:9px;background:#111827;color:#aeb9c9;font:12px/1.5 Segoe UI,Arial,sans-serif;white-space:pre-wrap;overflow-wrap:anywhere}
+.update-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.update-actions .button-primary{background:linear-gradient(120deg,#4b8d83,#7461b1);border-color:#a898dc;color:#fff}
 </style>
 </head>
 <body>
@@ -604,6 +613,15 @@ main.panel>footer{align-items:center;margin-top:13px;padding:10px 0;border-top:1
     </div>
   </section>
 </main>
+<div id="updateNotice" class="update-notice" role="dialog" aria-modal="true" aria-labelledby="updateTitle" hidden>
+  <section class="update-card">
+    <h2 id="updateTitle">Atualização disponível</h2>
+    <p id="updateVersion" class="update-version"></p>
+    <p>Há uma nova versão do W99 Origin Damage Tracker. Abra a página de lançamentos do GitHub para ver as mudanças e baixar o pacote.</p>
+    <pre id="updateNotes" class="update-notes" hidden></pre>
+    <div class="update-actions"><button type="button" onclick="dismissUpdateNotice()">Agora não</button><button type="button" class="button-primary" onclick="openUpdatePage()">Ver atualização</button></div>
+  </section>
+</div>
 <div id="resultsModal" class="results-modal" role="dialog" aria-modal="true" aria-labelledby="resultsTitle" hidden onclick="if(event.target===this)closeSavedResults()">
   <section class="results-window">
     <div class="results-header"><span id="resultsTitle" class="results-title">Resultados salvos</span><button id="closeResults" class="results-close" aria-label="Fechar resultados" onclick="closeSavedResults()">×</button></div>
@@ -620,6 +638,7 @@ const token='__TOKEN__';
 const fmt=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:0});
 const fmt2=new Intl.NumberFormat('pt-BR',{maximumFractionDigits:2});
 const colors=['#f2bc05','#5aa6ff','#2dcc9a','#ed70b5','#a58bff'];
+let dismissedUpdateVersion='';
 const paceSamples={damage:[],healing:[]};let paceLastAt=Date.now(),paceLastDamage=null,paceLastHealing=null,paceAccumDamage=0,paceAccumHealing=0;
 function updateLivePace(state){const now=Date.now(),damage=Number(state.damage)||0,healing=Number(state.heal)||0;if(paceLastDamage!==null){paceAccumDamage+=Math.max(0,damage-paceLastDamage);paceAccumHealing+=Math.max(0,healing-paceLastHealing)}paceLastDamage=damage;paceLastHealing=healing;if(now-paceLastAt>=950){paceSamples.damage.push(paceAccumDamage);paceSamples.healing.push(paceAccumHealing);if(paceSamples.damage.length>36)paceSamples.damage.shift();if(paceSamples.healing.length>36)paceSamples.healing.shift();paceAccumDamage=0;paceAccumHealing=0;paceLastAt=now}const draw=(id,values,top,bottom)=>{const path=document.getElementById(id);if(!values.length){path.setAttribute('d','');return}const max=Math.max(1,...values);const d=values.map((value,index)=>{const x=34+360*(index/Math.max(1,values.length-1));const y=bottom-(value/max)*(bottom-top);return(index?'L':'M')+x.toFixed(1)+' '+y.toFixed(1)}).join(' ');path.setAttribute('d',d)};draw('damagePaceLine',paceSamples.damage,28,96);draw('healingPaceLine',paceSamples.healing,126,158);const hasEvents=paceSamples.damage.some(v=>v>0)||paceSamples.healing.some(v=>v>0);document.getElementById('paceEmpty').hidden=hasEvents;const seconds=Math.min(36,paceSamples.damage.length);document.getElementById('paceMidLabel').textContent=Math.round(seconds/2)+'s';document.getElementById('paceEndLabel').textContent=seconds+'s'}
 const characterNames={ban:'Ban',howzer:'Howzer',daisy:'Daisy',lancelot:'Lancelot',elizabeth:'Elizabeth',meliodas:'Meliodas',gowther:'Gowther',jericho:'Jericho',manny:'Manny',merlin:'Merlin',guila:'Guila',escanor:'Escanor',estia:'Estia',king:'King',diane:'Diane',hawk:'Hawk',gilthunder:'Gilthunder',hendrickson:'Hendrickson',arthur:'Arthur',zeldris:'Zeldris',derieri:'Derieri',monspiet:'Monspeet',drole:'Drole',gloxinia:'Gloxinia',fraudrin:'Fraudrin',slater:'Slater',vivian:'Vivian',helbram:'Helbram',matrona:'Matrona',calla:'Calla',elaine:'Elaine',shin:'Shin',thornar:'Thornar'};
@@ -822,6 +841,12 @@ async function showSavedResult(id){
 }
 async function quitMeter(){try{await fetch('/api/quit',{method:'POST',headers:{'Content-Type':'application/json','X-DPS-Token':token},body:'{}'});const s=document.getElementById('status');s.textContent='Programa encerrado. Pode fechar esta janela.';document.getElementById('capturebadge').textContent='ENCERRADO';document.getElementById('capturebadge').className='badge off';document.getElementById('start').disabled=true;document.getElementById('stop').disabled=true}catch(e){const s=document.getElementById('status');s.textContent=e.message;s.className='status error'}}
 function render(s){
+  const release=s.update_notice||{};
+  if(release.available&&release.latest_version&&release.latest_version!==dismissedUpdateVersion){
+    document.getElementById('updateVersion').textContent=`Versão atual: ${release.current_version} · Nova versão: ${release.latest_version}`;
+    const notes=document.getElementById('updateNotes');notes.textContent=release.notes||'';notes.hidden=!release.notes;
+    document.getElementById('updateNotice').hidden=false;
+  }
   const badge=document.getElementById('capturebadge');badge.textContent=s.running?'CAPTURANDO':'PARADO';badge.className='badge'+(s.running?'':' off');
   const autoSave=document.getElementById('autoSaveResults');if(document.activeElement!==autoSave)autoSave.checked=!!s.auto_save_enabled;
   overlayVisible=!!s.overlay_visible;overlayAutoEnabled=!!s.overlay_auto_enabled;overlayManualHidden=!!s.overlay_manual_hidden;overlayManualEnabled=!!s.overlay_manual_enabled;overlayClickthrough=!!s.overlay_clickthrough;
@@ -857,6 +882,8 @@ function render(s){
   const status=document.getElementById('status');status.textContent=s.error||s.status||'';status.className='status'+(s.error?' error':'');
 }
 async function update(){try{const r=await fetch('/api/state',{cache:'no-store'});if(!r.ok)throw Error('Servidor indisponível');render(await r.json())}catch(e){const status=document.getElementById('status');status.textContent='Sem conexão com o medidor. '+e.message;status.className='status error'}}
+function dismissUpdateNotice(){const version=document.getElementById('updateVersion').textContent.match(/Nova versão: (.+)$/);dismissedUpdateVersion=version?version[1]:'';document.getElementById('updateNotice').hidden=true}
+async function openUpdatePage(){const opened=await action('update/open');if(opened)document.getElementById('updateNotice').hidden=true}
 async function enableOverlayOnStartup(){try{const r=await fetch('/api/overlay/open',{method:'POST',headers:{'Content-Type':'application/json','X-DPS-Token':token},body:'{}'});if(!r.ok)throw Error('Não foi possível ativar a sobreposição automática');await update()}catch(e){const status=document.getElementById('status');status.textContent=e.message;status.className='status error'}}
 enableOverlayOnStartup();loadSavedResults();setInterval(update,500);
 </script>
