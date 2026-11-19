@@ -24,6 +24,9 @@ from app_paths import APP_DIR, RESOURCE_DIR
 from urllib.request import Request, urlopen
 
 ROOT = APP_DIR
+SETTINGS_DIR = ROOT/'sessoes'
+SETTINGS_PATH = SETTINGS_DIR/'dps_meter_settings.json'
+LEGACY_SETTINGS_PATH = ROOT/'dps_meter_settings.json'
 ASSETS = RESOURCE_DIR
 SHARE_BUILD = (ASSETS/'distribution_build.json').is_file()
 POST_CONTENT_GRACE_SECONDS = 20
@@ -83,6 +86,7 @@ class App:
         self.meter = Meter()
         self.self_player_name = self._load_self_player_name()
         self.auto_save_enabled = self._load_auto_save_enabled()
+        self.selected_theme = self._load_selected_theme()
         self.meter.set_self_player_name(self.self_player_name)
         self.thread = None
         self.stop_event = threading.Event()
@@ -117,9 +121,8 @@ class App:
         self.phase_marker_number = 0
 
     def _load_self_player_name(self):
-        path = ROOT/'dps_meter_settings.json'
         try:
-            data = json.loads(path.read_text(encoding='utf-8'))
+            data = json.loads(self._settings_path().read_text(encoding='utf-8'))
             name = data.get('self_player_name', '') if isinstance(data, dict) else ''
             return name.strip() if isinstance(name, str) else ''
         except FileNotFoundError:
@@ -128,12 +131,41 @@ class App:
             return ''
 
     def _load_auto_save_enabled(self):
-        path = ROOT/'dps_meter_settings.json'
         try:
-            data = json.loads(path.read_text(encoding='utf-8'))
+            data = json.loads(self._settings_path().read_text(encoding='utf-8'))
             return bool(data.get('auto_save_results', True)) if isinstance(data, dict) else True
         except (OSError, ValueError):
             return True
+
+    def _load_selected_theme(self):
+        allowed = {'origin', 'meliodas', 'ban', 'elizabeth', 'diane', 'gowther', 'king', 'escanor'}
+        try:
+            data = json.loads(self._settings_path().read_text(encoding='utf-8'))
+            theme = data.get('theme', 'origin') if isinstance(data, dict) else 'origin'
+            return theme if theme in allowed else 'origin'
+        except (OSError, ValueError):
+            return 'origin'
+
+    def _settings_path(self):
+        SETTINGS_DIR.mkdir(parents=True, exist_ok=True)
+        if not SETTINGS_PATH.exists() and LEGACY_SETTINGS_PATH.exists():
+            try:
+                SETTINGS_PATH.write_bytes(LEGACY_SETTINGS_PATH.read_bytes())
+                LEGACY_SETTINGS_PATH.unlink()
+            except OSError:
+                # Keep loading from the old location if migration cannot complete.
+                return LEGACY_SETTINGS_PATH
+        return SETTINGS_PATH
+
+    def _save_settings(self):
+        settings_path = self._settings_path()
+        temp_path = settings_path.with_suffix('.tmp')
+        temp_path.write_text(json.dumps(
+            {'self_player_name': self.self_player_name,
+             'auto_save_results': self.auto_save_enabled,
+             'theme': self.selected_theme}, ensure_ascii=False, indent=2
+        ), encoding='utf-8')
+        temp_path.replace(settings_path)
 
     def start(self):
         with self.lock:
@@ -459,7 +491,13 @@ class App:
                     self.dungeon_state = 'clear_reported'
                     self.dungeon_clear_signal = protocol_name
             elif protocol_id in {10199, 10509, 10813, 11036}:
-                self._finish_content(timestamp, protocol_name)
+                # Raid phase transitions can emit the same generic dungeon
+                # exit packets as a real exit. Taranis sends the authoritative
+                # final-exit marker as state 8 of protocol 10188; ending here
+                # saves a partial phase and makes the next phase look like a
+                # separate content. Keep the raid open until that state arrives.
+                if not self.dungeon_is_raid:
+                    self._finish_content(timestamp, protocol_name)
 
     def _begin_raid_from_marker(self, timestamp):
         """Recognize Taranis from its map object identifiers in protocol 10021."""
@@ -993,6 +1031,7 @@ class App:
                     'dungeon_clear_signal': self.dungeon_clear_signal,
                     'last_saved_result': self.last_saved_result,
                     'auto_save_enabled': self.auto_save_enabled,
+                    'theme': self.selected_theme,
                     'self_player_name': self.self_player_name,
                     'messages': self.pipeline.messages if self.pipeline else 0,
                     'protocol_types': dict(self.pipeline.types) if self.pipeline else {},
@@ -1168,36 +1207,46 @@ def _apply_overlay_round_region(window, wait=True):
     if not window.native:
         return
     hwnd = window.native.Handle.ToInt64()
-    rect = wintypes.RECT()
-    get_rect = ctypes.windll.user32.GetWindowRect
-    get_rect.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.RECT)]
-    get_rect.restype = wintypes.BOOL
-    if not get_rect(hwnd, ctypes.byref(rect)):
-        return
-    width, height = rect.right-rect.left, rect.bottom-rect.top
-    if width <= 0 or height <= 0:
-        return
-    dpi = 96
     try:
-        get_dpi = ctypes.windll.user32.GetDpiForWindow
-        get_dpi.argtypes = [wintypes.HWND]
-        get_dpi.restype = wintypes.UINT
-        dpi = get_dpi(hwnd) or dpi
+        # Let DWM round the actual frameless top-level window, then use a
+        # slightly wider native clip so its outer radius follows the panel.
+        preference = ctypes.c_int(2)  # DWMWCP_ROUND
+        set_attribute = ctypes.windll.dwmapi.DwmSetWindowAttribute
+        set_attribute.argtypes = [wintypes.HWND, wintypes.DWORD,
+                                  ctypes.c_void_p, wintypes.DWORD]
+        set_attribute.restype = ctypes.c_long
+        set_attribute(hwnd, 33, ctypes.byref(preference), ctypes.sizeof(preference))
+        rect = wintypes.RECT()
+        get_rect = ctypes.windll.user32.GetWindowRect
+        get_rect.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.RECT)]
+        get_rect.restype = wintypes.BOOL
+        if not get_rect(hwnd, ctypes.byref(rect)):
+            return
+        width, height = rect.right-rect.left, rect.bottom-rect.top
+        if width <= 0 or height <= 0:
+            return
+        dpi = 96
+        try:
+            get_dpi = ctypes.windll.user32.GetDpiForWindow
+            get_dpi.argtypes = [wintypes.HWND]
+            get_dpi.restype = wintypes.UINT
+            dpi = get_dpi(hwnd) or dpi
+        except (AttributeError, OSError):
+            pass
+        diameter = max(44, round(44*dpi/96))  # 22 CSS-pixel outer radius
+        create_region = ctypes.windll.gdi32.CreateRoundRectRgn
+        create_region.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int,
+                                  ctypes.c_int, ctypes.c_int, ctypes.c_int]
+        create_region.restype = ctypes.c_void_p
+        region = create_region(0, 0, width, height, diameter, diameter)
+        if region:
+            set_region = ctypes.windll.user32.SetWindowRgn
+            set_region.argtypes = [wintypes.HWND, ctypes.c_void_p, wintypes.BOOL]
+            set_region.restype = ctypes.c_int
+            if not set_region(hwnd, region, True):
+                ctypes.windll.gdi32.DeleteObject(region)
     except (AttributeError, OSError):
-        pass
-    diameter = max(16, round(28*dpi/96))
-    create_region = ctypes.windll.gdi32.CreateRoundRectRgn
-    create_region.argtypes = [ctypes.c_int, ctypes.c_int, ctypes.c_int,
-                              ctypes.c_int, ctypes.c_int, ctypes.c_int]
-    create_region.restype = ctypes.c_void_p
-    region = create_region(0, 0, width+1, height+1, diameter, diameter)
-    if not region:
         return
-    set_region = ctypes.windll.user32.SetWindowRgn
-    set_region.argtypes = [wintypes.HWND, ctypes.c_void_p, wintypes.BOOL]
-    set_region.restype = ctypes.c_int
-    if not set_region(hwnd, region, True):
-        ctypes.windll.gdi32.DeleteObject(region)
 
 
 def server(port=8765, auto_start=False, app_window=False):
@@ -1440,6 +1489,17 @@ def server(port=8765, auto_start=False, app_window=False):
             elif self.path == '/overlay':
                 html = (ASSETS/'dps_overlay.html').read_text(encoding='utf-8').replace('__TOKEN__', token)
                 self.reply(html, mime='text/html; charset=utf-8')
+            elif self.path.startswith('/assets/themes/'):
+                filename = self.path.rsplit('/', 1)[-1]
+                if not re.fullmatch(r'(?:meliodas|ban|elizabeth|diane|gowther|king|escanor)\.png', filename):
+                    self.reply('{}', 404)
+                    return
+                try:
+                    image = (ASSETS/'assets'/'themes'/filename).read_bytes()
+                except OSError:
+                    self.reply('{}', 404)
+                    return
+                self.reply(image, mime='image/png')
             elif self.path.startswith('/assets/characters/'):
                 filename = self.path.rsplit('/', 1)[-1]
                 if not re.fullmatch(r'[a-z0-9_-]+\.(?:png|webp)', filename):
@@ -1659,22 +1719,16 @@ def server(port=8765, auto_start=False, app_window=False):
                             raise ValueError('Nick inválido.')
                         app.self_player_name = name.strip()
                         app.meter.set_self_player_name(app.self_player_name)
-                        settings_path = ROOT/'dps_meter_settings.json'
-                        temp_path = settings_path.with_suffix('.tmp')
-                        temp_path.write_text(json.dumps(
-                            {'self_player_name': app.self_player_name,
-                             'auto_save_results': app.auto_save_enabled}, ensure_ascii=False, indent=2
-                        ), encoding='utf-8')
-                        temp_path.replace(settings_path)
+                        app._save_settings()
                     elif self.path == '/api/settings/autosave':
                         app.auto_save_enabled = bool(data.get('enabled'))
-                        settings_path = ROOT/'dps_meter_settings.json'
-                        temp_path = settings_path.with_suffix('.tmp')
-                        temp_path.write_text(json.dumps(
-                            {'self_player_name': app.self_player_name,
-                             'auto_save_results': app.auto_save_enabled}, ensure_ascii=False, indent=2
-                        ), encoding='utf-8')
-                        temp_path.replace(settings_path)
+                        app._save_settings()
+                    elif self.path == '/api/settings/theme':
+                        theme = data.get('theme')
+                        if theme not in {'origin', 'meliodas', 'ban', 'elizabeth', 'diane', 'gowther', 'king', 'escanor'}:
+                            raise ValueError('Tema inválido.')
+                        app.selected_theme = theme
+                        app._save_settings()
                     elif self.path == '/api/select':
                         app.meter.select(data.get('actor'))
                     elif self.path == '/api/members':
@@ -1736,3 +1790,5 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port', type=int, default=8765)
     server(parser.parse_args().port)
+
+
