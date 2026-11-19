@@ -13,6 +13,8 @@ A versão 1.1 acrescenta temas visuais de personagens à janela principal, à so
 
 ## Executar a partir do código
 
+Para compilar a versão completa, baixe o arquivo `W99_Origin_Damage_Tracker_Source_v1.1.0.zip` nos arquivos do GitHub Release e extraia todos os arquivos. Ele contém os recursos de imagem e os dados de protocolo necessários.
+
 1. Instale Npcap e WebView2 pelos respectivos canais oficiais.
 2. Crie um ambiente virtual e instale as dependências de compilação listadas em `requirements-build.txt`.
 3. Abra o PowerShell como administrador e execute `python dps_meter_exe.py`.
